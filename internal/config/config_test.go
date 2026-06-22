@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/selvakn/radius-server/internal/config"
 )
 
@@ -125,25 +127,46 @@ web:
 	}
 }
 
-func TestAdminUser_CheckPassword(t *testing.T) {
+func TestAdminUser_CheckPassword_Valid(t *testing.T) {
+	// bcrypt hash of "correctpass" with cost 4 (MinCost)
+	hash, _ := bcrypt.GenerateFromPassword([]byte("correctpass"), bcrypt.MinCost)
+	a := config.AdminUser{Username: "admin", PasswordHash: string(hash)}
+	if !a.CheckPassword("correctpass") {
+		t.Error("expected CheckPassword to return true for correct password")
+	}
+}
+
+func TestAdminUser_CheckPassword_Invalid(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("correctpass"), bcrypt.MinCost)
+	a := config.AdminUser{Username: "admin", PasswordHash: string(hash)}
+	if a.CheckPassword("wrongpass") {
+		t.Error("expected CheckPassword to return false for wrong password")
+	}
+}
+
+func TestConfig_FindAdmin_Found(t *testing.T) {
 	path := writeConfig(t, `
 radius:
   shared_secret: "s"
 web:
   session_secret: "12345678901234567890123456789012"
 admins:
-  - username: admin
-    password_hash: "$2a$12$PFxqr0N0.F9lTYUqcqH3e.6O6YgU9OdY3jHp.9o3Q0qQ7QR.oC.2K"
+  - username: alice
+    password_hash: "$2a$04$placeholder"
+  - username: bob
+    password_hash: "$2a$04$placeholder2"
 `)
 	cfg, err := config.Load(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	admin, ok := cfg.FindAdmin("admin")
+	admin, ok := cfg.FindAdmin("alice")
 	if !ok {
-		t.Fatal("admin not found")
+		t.Fatal("expected to find alice")
 	}
-	_ = admin
+	if admin.Username != "alice" {
+		t.Errorf("expected alice, got %q", admin.Username)
+	}
 }
 
 func TestConfig_FindAdmin_NotFound(t *testing.T) {
