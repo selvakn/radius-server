@@ -48,8 +48,8 @@ func sendRADIUS(t *testing.T, addr, secret, username, password string) *radius.P
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	pkt := radius.New(radius.CodeAccessRequest, []byte(secret))
-	rfc2865.UserName_SetString(pkt, username)
-	rfc2865.UserPassword_SetString(pkt, password)
+	_ = rfc2865.UserName_SetString(pkt, username)
+	_ = rfc2865.UserPassword_SetString(pkt, password)
 	resp, err := radius.Exchange(ctx, pkt, addr)
 	if err != nil {
 		t.Fatalf("radius exchange: %v", err)
@@ -72,10 +72,10 @@ func startServer(t *testing.T, d *db.DB) string {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		srv.Serve(pc)
+		_ = srv.Serve(pc)
 	}()
 	t.Cleanup(func() {
-		srv.Shutdown(context.Background())
+		_ = srv.Shutdown(context.Background())
 		pc.Close()
 		<-done
 	})

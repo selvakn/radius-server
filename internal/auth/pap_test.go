@@ -15,7 +15,7 @@ const testSecret = "testsecret"
 func makeRequest(t *testing.T, username, password string) *radius.Request {
 	t.Helper()
 	pkt := radius.New(radius.CodeAccessRequest, []byte(testSecret))
-	rfc2865.UserName_SetString(pkt, username)
+	_ = rfc2865.UserName_SetString(pkt, username)
 	if err := rfc2865.UserPassword_SetString(pkt, password); err != nil {
 		t.Fatalf("set password: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestVerifyPAP_WrongPassword(t *testing.T) {
 
 func TestVerifyPAP_NoPasswordAttribute(t *testing.T) {
 	pkt := radius.New(radius.CodeAccessRequest, []byte(testSecret))
-	rfc2865.UserName_SetString(pkt, "alice")
+	_ = rfc2865.UserName_SetString(pkt, "alice")
 	req := &radius.Request{Packet: pkt}
 	if auth.VerifyPAP(req, testSecret, hashPassword(t, "pass")) {
 		t.Error("expected false when no User-Password attribute")

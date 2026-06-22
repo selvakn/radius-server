@@ -30,36 +30,36 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			slog.Info("radius reject: user not found", "username", username)
-			w.Write(r.Response(radius.CodeAccessReject))
+			_ = w.Write(r.Response(radius.CodeAccessReject))
 			return
 		}
 		slog.Error("radius db error", "err", err)
-		w.Write(r.Response(radius.CodeAccessReject))
+		_ = w.Write(r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	if !user.Enabled {
 		slog.Info("radius reject: user disabled", "username", username)
-		w.Write(r.Response(radius.CodeAccessReject))
+		_ = w.Write(r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	if !VerifyPAP(r, h.secret, user.PasswordHash) {
 		slog.Info("radius reject: wrong password", "username", username)
-		w.Write(r.Response(radius.CodeAccessReject))
+		_ = w.Write(r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	slog.Info("radius accept", "username", username)
 	resp := r.Response(radius.CodeAccessAccept)
-	rfc2865.FramedProtocol_Set(resp, rfc2865.FramedProtocol_Value_PPP)
+	_ = rfc2865.FramedProtocol_Set(resp, rfc2865.FramedProtocol_Value_PPP)
 
 	if user.DownloadRate != nil && user.UploadRate != nil {
 		vsa := mikrotikRateLimit(*user.DownloadRate, *user.UploadRate)
 		resp.Add(radius.Type(26), vsa)
 	}
 
-	w.Write(resp)
+	_ = w.Write(resp)
 }
 
 func mikrotikRateLimit(downKbps, upKbps int) radius.Attribute {

@@ -142,7 +142,10 @@ func (s *Server) handlePostUpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	down, up := parseRates(r)
-	s.db.UpdateUser(id, db.UserUpdate{PasswordHash: hash, DownloadRate: down, UploadRate: up})
+	if err := s.db.UpdateUser(id, db.UserUpdate{PasswordHash: hash, DownloadRate: down, UploadRate: up}); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
 	setFlash(w, "User updated", "ok")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -153,7 +156,10 @@ func (s *Server) handlePostDisable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	s.db.SetEnabled(id, false)
+	if err := s.db.SetEnabled(id, false); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
 	setFlash(w, "User disabled", "ok")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -164,7 +170,10 @@ func (s *Server) handlePostEnable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	s.db.SetEnabled(id, true)
+	if err := s.db.SetEnabled(id, true); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
 	setFlash(w, "User enabled", "ok")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -175,7 +184,10 @@ func (s *Server) handlePostDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	s.db.DeleteUser(id)
+	if err := s.db.DeleteUser(id); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
 	setFlash(w, "User deleted", "ok")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

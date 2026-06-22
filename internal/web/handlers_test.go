@@ -129,7 +129,7 @@ func TestDisableUser(t *testing.T) {
 	token := sessions.Create("admin")
 	sess, _ := sessions.Get(token)
 
-	d.CreateUser(db.User{Username: "victim", PasswordHash: "h", Enabled: true})
+	_ = d.CreateUser(db.User{Username: "victim", PasswordHash: "h", Enabled: true})
 	u, _ := d.GetUserByUsername("victim")
 
 	rec := httptest.NewRecorder()
@@ -151,7 +151,7 @@ func TestDeleteUser(t *testing.T) {
 	token := sessions.Create("admin")
 	sess, _ := sessions.Get(token)
 
-	d.CreateUser(db.User{Username: "todelete", PasswordHash: "h", Enabled: true})
+	_ = d.CreateUser(db.User{Username: "todelete", PasswordHash: "h", Enabled: true})
 	u, _ := d.GetUserByUsername("todelete")
 
 	rec := httptest.NewRecorder()
@@ -183,5 +183,117 @@ func TestCSRF_MissingToken(t *testing.T) {
 
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("expected 403 for missing CSRF, got %d", rec.Code)
+	}
+}
+
+func TestGetLogin_Renders(t *testing.T) {
+	srv, _, _ := setupServer(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/login", nil)
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "RADIUS Admin") {
+		t.Error("expected login page content")
+	}
+}
+
+func TestLogout(t *testing.T) {
+	srv, _, sessions := setupServer(t)
+	token := sessions.Create("admin")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/logout", nil)
+	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	srv.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
+		t.Errorf("expected redirect after logout, got %d", rec.Code)
+	}
+	_, ok := sessions.Get(token)
+	if ok {
+		t.Error("expected session to be deleted after logout")
+	}
+}
+
+func TestGetNewUser_Renders(t *testing.T) {
+	srv, _, sessions := setupServer(t)
+	token := sessions.Create("admin")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/users/new", nil)
+	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	srv.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+}
+
+func TestGetEditUser_Renders(t *testing.T) {
+	srv, d, sessions := setupServer(t)
+	token := sessions.Create("admin")
+
+	_ = d.CreateUser(db.User{Username: "editable", PasswordHash: "h", Enabled: true})
+	u, _ := d.GetUserByUsername("editable")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", fmt.Sprintf("/users/%d/edit", u.ID), nil)
+	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	srv.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+}
+
+func TestEnableUser(t *testing.T) {
+	srv, d, sessions := setupServer(t)
+	token := sessions.Create("admin")
+	sess, _ := sessions.Get(token)
+
+	_ = d.CreateUser(db.User{Username: "tooenable", PasswordHash: "h", Enabled: false})
+	u, _ := d.GetUserByUsername("tooenable")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", fmt.Sprintf("/users/%d/enable", u.ID), strings.NewReader(url.Values{
+		"_csrf": {sess.CSRFToken},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	srv.Router().ServeHTTP(rec, req)
+
+	u2, _ := d.GetUserByUsername("tooenable")
+	if !u2.Enabled {
+		t.Error("expected user to be enabled")
+	}
+}
+
+func TestUpdateUser(t *testing.T) {
+	srv, d, sessions := setupServer(t)
+	token := sessions.Create("admin")
+	sess, _ := sessions.Get(token)
+
+	_ = d.CreateUser(db.User{Username: "toupdate", PasswordHash: makeHash(t, "oldpass"), Enabled: true})
+	u, _ := d.GetUserByUsername("toupdate")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", fmt.Sprintf("/users/%d", u.ID), strings.NewReader(url.Values{
+		"password":      {"newpass"},
+		"download_rate": {"1024"},
+		"upload_rate":   {"512"},
+		"_csrf":         {sess.CSRFToken},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	srv.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
+		t.Errorf("expected redirect after update, got %d: %s", rec.Code, rec.Body.String())
+	}
+	u2, _ := d.GetUserByUsername("toupdate")
+	if u2.DownloadRate == nil || *u2.DownloadRate != 1024 {
+		t.Error("expected download rate 1024")
 	}
 }

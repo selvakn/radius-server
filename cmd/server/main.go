@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -72,22 +73,30 @@ func main() {
 
 	<-ctx.Done()
 	slog.Info("shutting down")
-	radiusSrv.Shutdown(context.Background())
-	httpSrv.Shutdown(context.Background())
+	_ = radiusSrv.Shutdown(context.Background())
+	_ = httpSrv.Shutdown(context.Background())
 }
 
 func runHashPassword() {
 	fmt.Fprintf(os.Stderr, "Enter password: ")
-	var plain string
-	fmt.Scanln(&plain)
-	if plain == "" {
-		fmt.Fprintln(os.Stderr, "error: empty password")
-		os.Exit(1)
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(plain), 12)
-	if err != nil {
+	if err := hashPassword(os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Println(string(hash))
+}
+
+func hashPassword(r io.Reader, w io.Writer) error {
+	var plain string
+	if _, err := fmt.Fscanln(r, &plain); err != nil {
+		return fmt.Errorf("reading password: %w", err)
+	}
+	if plain == "" {
+		return fmt.Errorf("empty password")
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(plain), 12)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(w, string(hash))
+	return err
 }

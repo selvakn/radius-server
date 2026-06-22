@@ -9,10 +9,10 @@ import (
 )
 
 type Config struct {
-	Radius   RadiusConfig  `yaml:"radius"`
+	Radius   RadiusConfig   `yaml:"radius"`
 	Database DatabaseConfig `yaml:"database"`
-	Web      WebConfig     `yaml:"web"`
-	Admins   []AdminUser   `yaml:"admins"`
+	Web      WebConfig      `yaml:"web"`
+	Admins   []AdminUser    `yaml:"admins"`
 }
 
 type RadiusConfig struct {

@@ -138,7 +138,7 @@ func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	t.Execute(w, map[string]string{"Error": errMsg})
+	_ = t.Execute(w, map[string]string{"Error": errMsg})
 }
 
 func (s *Server) renderUsers(w http.ResponseWriter, users []db.User, csrf, flash string) {
@@ -164,7 +164,7 @@ func (s *Server) renderLayout(w http.ResponseWriter, tmplName string, data pageD
 		http.Error(w, "template error", 500)
 		return
 	}
-	t.Execute(w, data)
+	_ = t.Execute(w, data)
 }
 
 func setFlash(w http.ResponseWriter, msg, typ string) {
