@@ -1,0 +1,3 @@
+capabilities:
+    - git-remote
+    - network

@@ -1,50 +1,61 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+  Version change: none → 1.0.0 (initial)
+  Modified principles: none (first edition)
+  Added sections: Core Principles, Quality Standards, Development Workflow, Governance
+  Removed sections: none
+  Templates requiring updates:
+    - .specify/templates/plan-template.md ✅ aligned (Constitution Check placeholder is per-feature)
+    - .specify/templates/spec-template.md ✅ aligned (no constitution-specific rules)
+    - .specify/templates/tasks-template.md ✅ aligned (testing tasks match quality gates)
+  Follow-up TODOs: none
+-->
+
+# Radius Server Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Test-First & High Coverage (NON-NEGOTIABLE)
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Unit test coverage MUST exceed 70% for all new and modified code. Tests are written before implementation, following TDD discipline. Red-Green-Refactor cycle is the standard development rhythm. No code merges without corresponding tests that demonstrate the feature works.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Clean Code & Brevity
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Code self-documents through clear naming and structure. Avoid comments and documentation unless the logic is non-trivial for experienced developers in the domain. If a reader needs to understand what the code does, improve the code rather than adding explanation. Prose belongs in specs, not source files.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Modularity & Size Limits
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Files MUST NOT exceed 500 lines. Classes and top-level modules MUST NOT exceed 500 lines. Code is organized into small, focused, single-responsibility units. When a file nears the limit, extract logically cohesive parts into new files. Imports should be minimal—each module owns a narrow concern.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Minimal UI for Power Users
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+UI surfaces MUST be minimal, dense, and efficient. Prioritize keyboard-driven workflows, shortcuts, and configuration over menus and wizards. Assume users understand domain concepts—no hand-holding, no tutorial overlays, no redundant labels. Every pixel must carry information or afford action.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Pre-Commit Quality Gates
+
+Lint and test MUST pass before every commit. Pre-commit hooks enforce this gate automatically. The build pipeline reflects the same checks—what passes locally passes in CI. No exceptions for hotfixes; fast fixes can skip documentation but not tests or lint.
+
+## Quality Standards
+
+**Coverage threshold**: 70% minimum unit test coverage, measured on changed lines.
+**Linter**: Zero warnings permitted. Warnings are errors.
+**Line limits**: 500 lines per file, 500 lines per class/module definition.
+**Complexity**: Functions should be short and focused. If cyclomatic complexity feels high, extract.
+
+## Development Workflow
+
+1. Write tests that fail for the expected behavior.
+2. Implement minimum code to pass those tests.
+3. Refactor while keeping tests green.
+4. Lint must pass. Commit fails if pre-commit hooks fail.
+5. All checks visible and reproducible locally.
+
+Code reviews verify: coverage thresholds, file size limits, no unnecessary comments, minimal and functional UI decisions.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices for this project. Amendments require: proposed change, rationale, version bump per semver (MAJOR for principle removals/redefinitions, MINOR for additions/expansions, PATCH for clarifications), and update of this document.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+All commits are implicitly reviewed against these principles. Pre-commit gates enforce test and lint compliance automatically. Complexity must be justified—simplicity is the default.
+
+**Version**: 1.0.0 | **Ratified**: 2026-06-21 | **Last Amended**: 2026-06-21

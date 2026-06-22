@@ -1,0 +1,14 @@
+radius:
+  shared_secret: "change-me-in-production"
+  port: 1812
+
+database:
+  path: "./radius.db"
+
+web:
+  port: 8080
+  session_secret: "change-me-to-a-32-char-random-string"
+
+admins:
+  - username: admin
+    password_hash: "$2a$12$replacethiswitharealbcrypthash"

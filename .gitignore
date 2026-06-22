@@ -1,0 +1,14 @@
+bin/
+*.exe
+*.test
+*.out
+coverage.out
+vendor/
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+config.yaml
+radius.db

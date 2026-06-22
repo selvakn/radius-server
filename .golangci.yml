@@ -1,0 +1,17 @@
+linters:
+  enable:
+    - errcheck
+    - staticcheck
+    - govet
+    - gofmt
+    - revive
+
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
