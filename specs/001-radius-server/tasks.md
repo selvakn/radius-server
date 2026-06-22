@@ -19,11 +19,11 @@
 
 **Purpose**: Initialize Go module, Makefile, lint config, pre-commit hook.
 
-- [ ] T001 Initialize Go module `github.com/selvakn/radius-server` and create directory structure per plan.md (`cmd/server/`, `internal/config/`, `internal/db/`, `internal/auth/`, `internal/web/templates/`)
-- [ ] T002 Create `Makefile` with targets: `build` (single binary to `bin/radius-server`), `build-linux` (CGO_ENABLED=0 cross-compile), `test` (with -race -coverprofile), `lint` (golangci-lint), `run`, `clean`, `check` (lint then test — pre-commit gate)
-- [ ] T003 [P] Create `.golangci.yml` enabling linters: `errcheck`, `staticcheck`, `govet`, `gofmt`, `revive`, `exhaustive` with zero-warnings policy
-- [ ] T004 Add git pre-commit hook at `.git/hooks/pre-commit` that runs `make check` and exits non-zero on failure
-- [ ] T005 [P] Create `config.yaml.example` with all fields documented, placeholder secrets, and two sample admin entries
+- [x] T001 Initialize Go module `github.com/selvakn/radius-server` and create directory structure per plan.md (`cmd/server/`, `internal/config/`, `internal/db/`, `internal/auth/`, `internal/web/templates/`)
+- [x] T002 Create `Makefile` with targets: `build` (single binary to `bin/radius-server`), `build-linux` (CGO_ENABLED=0 cross-compile), `test` (with -race -coverprofile), `lint` (golangci-lint), `run`, `clean`, `check` (lint then test — pre-commit gate)
+- [x] T003 [P] Create `.golangci.yml` enabling linters: `errcheck`, `staticcheck`, `govet`, `gofmt`, `revive`, `exhaustive` with zero-warnings policy
+- [x] T004 Add git pre-commit hook at `.git/hooks/pre-commit` that runs `make check` and exits non-zero on failure
+- [x] T005 [P] Create `config.yaml.example` with all fields documented, placeholder secrets, and two sample admin entries
 
 **Commit after Phase 1**: `feat: initialize Go project scaffold with Makefile and lint config`
 
@@ -37,15 +37,15 @@
 
 ### Config Loader
 
-- [ ] T006 [P] Write failing tests for config loader in `internal/config/config_test.go`: load valid YAML, reject missing `radius.shared_secret`, reject missing `web.session_secret`, reject negative port, handle empty admins list gracefully
-- [ ] T007 Implement `internal/config/config.go`: `Config` struct with `Radius`, `Database`, `Web`, `Admins` nested structs; `Load(path string) (*Config, error)` that reads YAML and validates required fields; fail-fast with descriptive error messages
+- [x] T006 [P] Write failing tests for config loader in `internal/config/config_test.go`: load valid YAML, reject missing `radius.shared_secret`, reject missing `web.session_secret`, reject negative port, handle empty admins list gracefully
+- [x] T007 Implement `internal/config/config.go`: `Config` struct with `Radius`, `Database`, `Web`, `Admins` nested structs; `Load(path string) (*Config, error)` that reads YAML and validates required fields; fail-fast with descriptive error messages
 
 ### Database Layer
 
-- [ ] T008 Create migration file `internal/db/migrations/001_initial.sql` with `users` table schema per data-model.md: id, username (UNIQUE), password_hash, enabled, download_rate (nullable), upload_rate (nullable), created_at, updated_at; add index on username
-- [ ] T009 [P] Write failing tests for DB layer in `internal/db/users_test.go`: CreateUser success, duplicate username error, GetUserByUsername found/not-found, ListUsers, UpdateUser, SetEnabled toggle, DeleteUser, null rates handling
-- [ ] T010 Implement `internal/db/db.go`: `Open(path string) (*DB, error)` that opens SQLite via `glebarez/sqlite`, runs embedded goose migration using `embed.FS`; add `go.mod` dependencies: `glebarez/sqlite`, `github.com/pressly/goose/v3`, `golang.org/x/crypto`, `layeh.com/radius`, `github.com/go-chi/chi/v5`, `gopkg.in/yaml.v3`
-- [ ] T011 Implement `internal/db/users.go`: `User` struct; `CreateUser`, `GetUserByUsername`, `ListUsers`, `UpdateUser`, `SetEnabled`, `DeleteUser` — all using parameterized queries via `database/sql`
+- [x] T008 Create migration file `internal/db/migrations/001_initial.sql` with `users` table schema per data-model.md: id, username (UNIQUE), password_hash, enabled, download_rate (nullable), upload_rate (nullable), created_at, updated_at; add index on username
+- [x] T009 [P] Write failing tests for DB layer in `internal/db/users_test.go`: CreateUser success, duplicate username error, GetUserByUsername found/not-found, ListUsers, UpdateUser, SetEnabled toggle, DeleteUser, null rates handling
+- [x] T010 Implement `internal/db/db.go`: `Open(path string) (*DB, error)` that opens SQLite via `glebarez/sqlite`, runs embedded goose migration using `embed.FS`; add `go.mod` dependencies: `glebarez/sqlite`, `github.com/pressly/goose/v3`, `golang.org/x/crypto`, `layeh.com/radius`, `github.com/go-chi/chi/v5`, `gopkg.in/yaml.v3`
+- [x] T011 Implement `internal/db/users.go`: `User` struct; `CreateUser`, `GetUserByUsername`, `ListUsers`, `UpdateUser`, `SetEnabled`, `DeleteUser` — all using parameterized queries via `database/sql`
 
 **Commit after Phase 2**: `feat: add config loader and SQLite database layer with goose migrations`
 
@@ -59,14 +59,14 @@
 
 ### Tests for US1 (Write FIRST — verify they FAIL before implementing)
 
-- [ ] T012 [P] [US1] Write failing test `internal/auth/pap_test.go`: `TestVerifyPAP_ValidPassword` sends known User-Password attribute encrypted with test secret, verifies bcrypt match returns true; `TestVerifyPAP_WrongPassword` verifies false; `TestVerifyPAP_MalformedAttribute` verifies safe error handling
-- [ ] T013 [P] [US1] Write failing test `internal/auth/handler_test.go`: `TestHandler_AcceptValidUser` creates test DB user, sends Access-Request via layeh/radius test client, asserts Access-Accept code; `TestHandler_RejectUnknownUser`; `TestHandler_RejectDisabledUser`; `TestHandler_RejectWrongPassword`; `TestHandler_IncludesRateLimitVSA` asserts Vendor 14988 Attr 8 present when user has rates set
+- [x] T012 [P] [US1] Write failing test `internal/auth/pap_test.go`: `TestVerifyPAP_ValidPassword` sends known User-Password attribute encrypted with test secret, verifies bcrypt match returns true; `TestVerifyPAP_WrongPassword` verifies false; `TestVerifyPAP_MalformedAttribute` verifies safe error handling
+- [x] T013 [P] [US1] Write failing test `internal/auth/handler_test.go`: `TestHandler_AcceptValidUser` creates test DB user, sends Access-Request via layeh/radius test client, asserts Access-Accept code; `TestHandler_RejectUnknownUser`; `TestHandler_RejectDisabledUser`; `TestHandler_RejectWrongPassword`; `TestHandler_IncludesRateLimitVSA` asserts Vendor 14988 Attr 8 present when user has rates set
 
 ### Implementation for US1
 
-- [ ] T014 [US1] Implement `internal/auth/pap.go`: `VerifyPAP(req *radius.Request, secret, passwordHash string) bool` — decrypt User-Password per RFC 2865 §5.2 using MD5(secret+authenticator) XOR, then bcrypt compare
-- [ ] T015 [US1] Implement `internal/auth/handler.go`: `Handler` struct with `DB *db.DB` and `Secret string`; `New(db, secret) *Handler`; `ServeRADIUS(w radius.ResponseWriter, r *radius.Request)` — lookup user, check enabled, call VerifyPAP, send Accept or Reject; `buildAccept` adds Framed-Protocol (PPP), optional MikroTik VSA; `mikrotikRateLimit(down, up int) radius.Attribute` encodes vendor 14988 attr 8 as `"<down>k/<up>k"` string
-- [ ] T016 [US1] Add RADIUS server startup to `cmd/server/main.go`: parse `--config` flag, load config, open DB, create `auth.Handler`, start `radius.PacketServer` on UDP `:1812` with shared secret; add `log/slog` structured logging for accept/reject events
+- [x] T014 [US1] Implement `internal/auth/pap.go`: `VerifyPAP(req *radius.Request, secret, passwordHash string) bool` — decrypt User-Password per RFC 2865 §5.2 using MD5(secret+authenticator) XOR, then bcrypt compare
+- [x] T015 [US1] Implement `internal/auth/handler.go`: `Handler` struct with `DB *db.DB` and `Secret string`; `New(db, secret) *Handler`; `ServeRADIUS(w radius.ResponseWriter, r *radius.Request)` — lookup user, check enabled, call VerifyPAP, send Accept or Reject; `buildAccept` adds Framed-Protocol (PPP), optional MikroTik VSA; `mikrotikRateLimit(down, up int) radius.Attribute` encodes vendor 14988 attr 8 as `"<down>k/<up>k"` string
+- [x] T016 [US1] Add RADIUS server startup to `cmd/server/main.go`: parse `--config` flag, load config, open DB, create `auth.Handler`, start `radius.PacketServer` on UDP `:1812` with shared secret; add `log/slog` structured logging for accept/reject events
 
 **Commit after Phase 3**: `feat: implement RADIUS authentication handler with PAP and MikroTik VSA`
 
@@ -82,16 +82,16 @@
 
 ### Tests for US2 (Write FIRST — verify they FAIL before implementing)
 
-- [ ] T017 [P] [US2] Write failing test `internal/web/session_test.go`: `TestSessionCreate` verifies token is 32+ bytes hex, stored in map; `TestSessionGet` returns session for valid token; `TestSessionGet_Expired` returns not-found after TTL; `TestSessionDelete` removes entry
-- [ ] T018 [P] [US2] Write failing test `internal/web/handlers_test.go`: `TestLogin_ValidCredentials` posts correct admin login, asserts 302 + Set-Cookie; `TestLogin_InvalidCredentials` asserts 401/re-render; `TestUsersIndex_Unauthenticated` asserts redirect to /login; `TestUsersIndex_Authenticated` asserts 200 with user table; `TestCreateUser_Success` posts new user form, asserts redirect and user exists in DB; `TestDisableUser` posts disable, asserts user.enabled=false; `TestDeleteUser` posts delete, asserts user removed; `TestCSRF_MissingToken` asserts 403
+- [x] T017 [P] [US2] Write failing test `internal/web/session_test.go`: `TestSessionCreate` verifies token is 32+ bytes hex, stored in map; `TestSessionGet` returns session for valid token; `TestSessionGet_Expired` returns not-found after TTL; `TestSessionDelete` removes entry
+- [x] T018 [P] [US2] Write failing test `internal/web/handlers_test.go`: `TestLogin_ValidCredentials` posts correct admin login, asserts 302 + Set-Cookie; `TestLogin_InvalidCredentials` asserts 401/re-render; `TestUsersIndex_Unauthenticated` asserts redirect to /login; `TestUsersIndex_Authenticated` asserts 200 with user table; `TestCreateUser_Success` posts new user form, asserts redirect and user exists in DB; `TestDisableUser` posts disable, asserts user.enabled=false; `TestDeleteUser` posts delete, asserts user removed; `TestCSRF_MissingToken` asserts 403
 
 ### Implementation for US2
 
-- [ ] T019 [US2] Implement `internal/web/session.go`: `Store` struct with `sync.RWMutex` and `map[string]Session`; `Session{AdminUsername, ExpiresAt, CSRFToken}`; `Create(username string) (token string)`generates 32-byte crypto/rand hex token, stores with 8h expiry; `Get(token string) (*Session, bool)` checks expiry; `Delete(token string)`; background goroutine to prune expired sessions
-- [ ] T020 [US2] Create HTML templates in `internal/web/templates/`: `layout.html` (base with flash message slot, logout link, nav); `login.html` (username+password form, hidden CSRF); `users.html` (dense table: username, status badge, rates, edit/disable-enable/delete buttons; new user form link at top)
-- [ ] T021 [US2] Implement `internal/web/handlers.go`: `Handlers` struct with `*db.DB`, `*config.Config`, `*session.Store`; implement all route handlers per contracts/admin-web-ui.md — login/logout, list users, new user form, create user (bcrypt hash password), edit form, update user, set enabled, delete user; CSRF token generation and validation; flash message via signed cookie
-- [ ] T022 [US2] Implement `internal/web/server.go`: `Server` struct; chi router setup; unauthenticated routes (`/login`); authenticated route group with session middleware and CSRF middleware; `//go:embed templates/*` for single-binary templates; `New(db, cfg, sessions) *Server`; `Start(port int) error`
-- [ ] T023 [US2] Wire admin HTTP server into `cmd/server/main.go`: create session store, create web server, run RADIUS and HTTP servers concurrently via `errgroup` or goroutines; handle SIGINT/SIGTERM for graceful shutdown
+- [x] T019 [US2] Implement `internal/web/session.go`: `Store` struct with `sync.RWMutex` and `map[string]Session`; `Session{AdminUsername, ExpiresAt, CSRFToken}`; `Create(username string) (token string)`generates 32-byte crypto/rand hex token, stores with 8h expiry; `Get(token string) (*Session, bool)` checks expiry; `Delete(token string)`; background goroutine to prune expired sessions
+- [x] T020 [US2] Create HTML templates in `internal/web/templates/`: `layout.html` (base with flash message slot, logout link, nav); `login.html` (username+password form, hidden CSRF); `users.html` (dense table: username, status badge, rates, edit/disable-enable/delete buttons; new user form link at top)
+- [x] T021 [US2] Implement `internal/web/handlers.go`: `Handlers` struct with `*db.DB`, `*config.Config`, `*session.Store`; implement all route handlers per contracts/admin-web-ui.md — login/logout, list users, new user form, create user (bcrypt hash password), edit form, update user, set enabled, delete user; CSRF token generation and validation; flash message via signed cookie
+- [x] T022 [US2] Implement `internal/web/server.go`: `Server` struct; chi router setup; unauthenticated routes (`/login`); authenticated route group with session middleware and CSRF middleware; `//go:embed templates/*` for single-binary templates; `New(db, cfg, sessions) *Server`; `Start(port int) error`
+- [x] T023 [US2] Wire admin HTTP server into `cmd/server/main.go`: create session store, create web server, run RADIUS and HTTP servers concurrently via `errgroup` or goroutines; handle SIGINT/SIGTERM for graceful shutdown
 
 **Commit after Phase 4**: `feat: implement admin web UI with chi router, session management, and user CRUD`
 
@@ -107,13 +107,13 @@
 
 ### Tests for US3 (Write FIRST — verify they FAIL before implementing)
 
-- [ ] T024 [P] [US3] Write failing tests for admin auth in `internal/config/config_test.go`: `TestAdminUser_CheckPassword_Valid` verifies bcrypt compare returns true; `TestAdminUser_CheckPassword_Invalid` returns false; `TestConfig_FindAdmin_Found` and `TestConfig_FindAdmin_NotFound`; `TestConfig_Load_EmptyAdmins` succeeds with warning-level log
-- [ ] T025 [P] [US3] Write failing test for hash-password subcommand in `cmd/server/main_test.go` or integration test: run binary with `hash-password` arg, pipe password to stdin, assert stdout is valid bcrypt hash
+- [x] T024 [P] [US3] Write failing tests for admin auth in `internal/config/config_test.go`: `TestAdminUser_CheckPassword_Valid` verifies bcrypt compare returns true; `TestAdminUser_CheckPassword_Invalid` returns false; `TestConfig_FindAdmin_Found` and `TestConfig_FindAdmin_NotFound`; `TestConfig_Load_EmptyAdmins` succeeds with warning-level log
+- [x] T025 [P] [US3] Write failing test for hash-password subcommand in `cmd/server/main_test.go` or integration test: run binary with `hash-password` arg, pipe password to stdin, assert stdout is valid bcrypt hash
 
 ### Implementation for US3
 
-- [ ] T026 [US3] Add to `internal/config/config.go`: `AdminUser` struct with `Username string` and `PasswordHash string` yaml tags; `(c *Config) FindAdmin(username string) (*AdminUser, bool)` linear scan of admins slice; `(a *AdminUser) CheckPassword(plain string) bool` calls `bcrypt.CompareHashAndPassword`
-- [ ] T027 [US3] Add `hash-password` subcommand to `cmd/server/main.go`: if first arg is `hash-password`, read password from stdin (or prompt), print bcrypt hash (cost 12) to stdout, exit 0; document in `--help` output
+- [x] T026 [US3] Add to `internal/config/config.go`: `AdminUser` struct with `Username string` and `PasswordHash string` yaml tags; `(c *Config) FindAdmin(username string) (*AdminUser, bool)` linear scan of admins slice; `(a *AdminUser) CheckPassword(plain string) bool` calls `bcrypt.CompareHashAndPassword`
+- [x] T027 [US3] Add `hash-password` subcommand to `cmd/server/main.go`: if first arg is `hash-password`, read password from stdin (or prompt), print bcrypt hash (cost 12) to stdout, exit 0; document in `--help` output
 
 **Commit after Phase 5**: `feat: implement config-file admin auth with hash-password subcommand`
 
@@ -125,12 +125,12 @@
 
 **Purpose**: Integration verification, single-binary build, coverage check, final cleanup.
 
-- [ ] T028 [P] Write integration test `internal/auth/integration_test.go` (build tag `integration`): starts full server with temp SQLite DB and test config, creates user via DB, sends actual UDP RADIUS Access-Request, asserts Access-Accept and rate-limit VSA
-- [ ] T029 [P] Write integration test `internal/web/integration_test.go` (build tag `integration`): starts HTTP server, creates admin config, logs in via HTTP POST, asserts session cookie, creates user via form POST, asserts user in DB
-- [ ] T030 Add graceful shutdown to `cmd/server/main.go`: `os/signal` + context cancellation; drain in-flight RADIUS requests; log "shutdown complete"
-- [ ] T031 Verify single-binary build: run `CGO_ENABLED=0 make build-linux`, confirm binary runs on Linux without shared libs (`ldd bin/radius-server-linux-amd64` shows "not a dynamic executable")
-- [ ] T032 Run `make check` (lint + test): fix any lint warnings (zero warnings policy per constitution); verify coverage ≥70% on changed lines
-- [ ] T033 Update `quickstart.md` with any changes discovered during implementation (actual flags, real example commands)
+- [x] T028 [P] Write integration test `internal/auth/integration_test.go` (build tag `integration`): starts full server with temp SQLite DB and test config, creates user via DB, sends actual UDP RADIUS Access-Request, asserts Access-Accept and rate-limit VSA
+- [x] T029 [P] Write integration test `internal/web/integration_test.go` (build tag `integration`): starts HTTP server, creates admin config, logs in via HTTP POST, asserts session cookie, creates user via form POST, asserts user in DB
+- [x] T030 Add graceful shutdown to `cmd/server/main.go`: `os/signal` + context cancellation; drain in-flight RADIUS requests; log "shutdown complete"
+- [x] T031 Verify single-binary build: run `CGO_ENABLED=0 make build-linux`, confirm binary runs on Linux without shared libs (`ldd bin/radius-server-linux-amd64` shows "not a dynamic executable")
+- [x] T032 Run `make check` (lint + test): fix any lint warnings (zero warnings policy per constitution); verify coverage ≥70% on changed lines
+- [x] T033 Update `quickstart.md` with any changes discovered during implementation (actual flags, real example commands)
 
 **Final Commit**: `chore: add integration tests, verify single-binary build, lint and coverage passing`
 
