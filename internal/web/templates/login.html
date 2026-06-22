@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>RADIUS Admin — Login</title>
+<style>
+body{font-family:monospace;font-size:14px;margin:0;background:#1a1a1a;color:#e0e0e0;display:flex;justify-content:center;align-items:center;min-height:100vh}
+form{background:#222;border:1px solid #333;padding:24px;min-width:280px}
+h2{margin:0 0 16px;font-size:16px;color:#aaa}
+label{display:block;margin-bottom:4px;color:#888;font-size:12px}
+input{display:block;width:100%;box-sizing:border-box;background:#111;border:1px solid #444;color:#e0e0e0;padding:6px 8px;margin-bottom:12px}
+button{width:100%;background:#333;border:1px solid #555;color:#e0e0e0;padding:6px;cursor:pointer}
+button:hover{background:#444}
+.err{color:#f44336;margin-bottom:12px;font-size:12px}
+</style>
+</head>
+<body>
+<form method="POST" action="/login">
+  <h2>RADIUS Admin</h2>
+  {{if .Error}}<div class="err">{{.Error}}</div>{{end}}
+  <label>Username</label>
+  <input type="text" name="username" autofocus required>
+  <label>Password</label>
+  <input type="password" name="password" required>
+  <button type="submit">Login</button>
+</form>
+</body>
+</html>

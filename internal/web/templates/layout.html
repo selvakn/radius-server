@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>RADIUS Admin</title>
+<style>
+body{font-family:monospace;font-size:14px;margin:0;background:#1a1a1a;color:#e0e0e0}
+nav{background:#111;padding:8px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333}
+nav a{color:#7eb6ff;text-decoration:none}
+main{padding:16px}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:4px 8px;border-bottom:1px solid #333}
+th{background:#222;color:#aaa;font-size:12px;text-transform:uppercase}
+tr:hover td{background:#222}
+.badge{display:inline-block;padding:1px 6px;border-radius:2px;font-size:11px}
+.badge-on{background:#1a4a1a;color:#4caf50}
+.badge-off{background:#4a1a1a;color:#f44336}
+form{display:inline}
+input[type=text],input[type=password],input[type=number]{background:#222;border:1px solid #444;color:#e0e0e0;padding:4px 8px}
+button,input[type=submit]{background:#333;border:1px solid #555;color:#e0e0e0;padding:4px 12px;cursor:pointer}
+button:hover,input[type=submit]:hover{background:#444}
+.btn-danger{background:#4a1a1a;border-color:#7a2a2a}
+.btn-danger:hover{background:#5a2a2a}
+.flash{padding:8px 12px;margin-bottom:12px;border-left:3px solid}
+.flash-ok{border-color:#4caf50;background:#1a2a1a}
+.flash-err{border-color:#f44336;background:#2a1a1a}
+a{color:#7eb6ff;text-decoration:none}
+</style>
+</head>
+<body>
+<nav>
+  <span>RADIUS Admin</span>
+  <form method="POST" action="/logout"><button type="submit">logout</button></form>
+</nav>
+<main>
+{{if .Flash}}<div class="flash flash-{{.FlashType}}">{{.Flash}}</div>{{end}}
+{{template "content" .}}
+</main>
+</body>
+</html>

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,6 +16,7 @@ import (
 	"github.com/selvakn/radius-server/internal/auth"
 	"github.com/selvakn/radius-server/internal/config"
 	"github.com/selvakn/radius-server/internal/db"
+	"github.com/selvakn/radius-server/internal/web"
 )
 
 func main() {
@@ -49,6 +51,10 @@ func main() {
 		SecretSource: radius.StaticSecretSource([]byte(cfg.Radius.SharedSecret)),
 	}
 
+	sessions := web.NewSessionStore()
+	webSrv := web.New(database, cfg, sessions)
+	webAddr := fmt.Sprintf(":%d", cfg.Web.Port)
+
 	slog.Info("starting RADIUS server", "addr", radiusAddr)
 	go func() {
 		if err := radiusSrv.ListenAndServe(); err != nil {
@@ -56,9 +62,18 @@ func main() {
 		}
 	}()
 
+	slog.Info("starting admin web server", "addr", webAddr)
+	httpSrv := &http.Server{Addr: webAddr, Handler: webSrv.Router()}
+	go func() {
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("web server error", "err", err)
+		}
+	}()
+
 	<-ctx.Done()
 	slog.Info("shutting down")
 	radiusSrv.Shutdown(context.Background())
+	httpSrv.Shutdown(context.Background())
 }
 
 func runHashPassword() {
