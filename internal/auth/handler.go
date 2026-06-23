@@ -66,11 +66,11 @@ func mikrotikRateLimit(downKbps, upKbps int) radius.Attribute {
 	rateStr := fmt.Sprintf("%dk/%dk", downKbps, upKbps)
 	value := []byte(rateStr)
 
-	attrLen := 2 + len(value)
-	vsa := make([]byte, 4+2+attrLen)
+	// VSA layout: 4 bytes vendor-ID, 1 byte vendor-type, 1 byte vendor-length, N bytes value
+	vsa := make([]byte, 6+len(value))
 	binary.BigEndian.PutUint32(vsa[0:], mikrotikVendorID)
 	vsa[4] = mikrotikAttrRateLimit
-	vsa[5] = byte(attrLen)
+	vsa[5] = byte(2 + len(value)) // vendor-length includes type + length bytes
 	copy(vsa[6:], value)
 
 	return radius.Attribute(vsa)

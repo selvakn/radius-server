@@ -135,7 +135,14 @@ func TestHandler_IncludesRateLimitVSA(t *testing.T) {
 	if vsas == nil {
 		t.Fatal("expected VSA attribute in response")
 	}
-	if !bytes.Contains([]byte(vsas), []byte("2048k/1024k")) {
-		t.Errorf("expected rate limit '2048k/1024k' in VSA, got: %q", vsas)
+	vsa := []byte(vsas)
+	rateStr := "2048k/1024k"
+	// VSA: 4-byte vendor-ID + 1-byte type + 1-byte length + value (no trailing bytes)
+	wantLen := 6 + len(rateStr)
+	if len(vsa) != wantLen {
+		t.Errorf("VSA length: want %d, got %d (raw: %x)", wantLen, len(vsa), vsa)
+	}
+	if !bytes.Contains(vsa, []byte(rateStr)) {
+		t.Errorf("expected rate limit %q in VSA, got: %x", rateStr, vsa)
 	}
 }
