@@ -28,7 +28,7 @@ func setupServer(t *testing.T) (*web.Server, *db.DB, *web.SessionStore) {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	t.Cleanup(func() { d.Close() })
+	t.Cleanup(func() { _ = d.Close() })
 
 	cfg := &config.Config{
 		Web: config.WebConfig{SessionSecret: "testsecret12345678901234567890"},

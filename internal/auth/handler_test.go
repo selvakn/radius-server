@@ -22,7 +22,7 @@ func openDB(t *testing.T) *db.DB {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	t.Cleanup(func() { d.Close() })
+	t.Cleanup(func() { _ = d.Close() })
 	return d
 }
 
@@ -76,7 +76,7 @@ func startServer(t *testing.T, d *db.DB) string {
 	}()
 	t.Cleanup(func() {
 		_ = srv.Shutdown(context.Background())
-		pc.Close()
+		_ = pc.Close()
 		<-done
 	})
 	time.Sleep(20 * time.Millisecond)
