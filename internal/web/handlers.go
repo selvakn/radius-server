@@ -59,7 +59,7 @@ func (s *Server) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetNewUser(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFromContext(r.Context())
-	s.renderForm(w, nil, false, sess.CSRFToken, "")
+	s.renderForm(w, &db.User{}, false, sess.CSRFToken, "")
 }
 
 func (s *Server) handlePostCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +72,7 @@ func (s *Server) handlePostCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if username == "" || password == "" {
 		sess := sessionFromContext(r.Context())
-		s.renderForm(w, nil, false, sess.CSRFToken, "Username and password are required")
+		s.renderForm(w, &db.User{}, false, sess.CSRFToken, "Username and password are required")
 		return
 	}
 
@@ -91,7 +91,7 @@ func (s *Server) handlePostCreateUser(w http.ResponseWriter, r *http.Request) {
 		UploadRate:   up,
 	}); err != nil {
 		sess := sessionFromContext(r.Context())
-		s.renderForm(w, nil, false, sess.CSRFToken, "Username already exists")
+		s.renderForm(w, &db.User{}, false, sess.CSRFToken, "Username already exists")
 		return
 	}
 
