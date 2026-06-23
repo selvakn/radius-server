@@ -11,6 +11,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"layeh.com/radius"
 	"layeh.com/radius/rfc2865"
+	"layeh.com/radius/rfc2869"
+	"layeh.com/radius/vendors/wispr"
 
 	"github.com/selvakn/radius-server/internal/auth"
 	"github.com/selvakn/radius-server/internal/db"
@@ -131,18 +133,45 @@ func TestHandler_IncludesRateLimitVSA(t *testing.T) {
 	if resp.Code != radius.CodeAccessAccept {
 		t.Errorf("expected Accept, got %v", resp.Code)
 	}
-	vsas := resp.Get(radius.Type(26))
-	if vsas == nil {
-		t.Fatal("expected VSA attribute in response")
-	}
-	vsa := []byte(vsas)
+	// MikroTik VSA
+	vsa := []byte(resp.Get(radius.Type(26)))
 	rateStr := "2048k/1024k"
-	// VSA: 4-byte vendor-ID + 1-byte type + 1-byte length + value (no trailing bytes)
 	wantLen := 6 + len(rateStr)
 	if len(vsa) != wantLen {
-		t.Errorf("VSA length: want %d, got %d (raw: %x)", wantLen, len(vsa), vsa)
+		t.Errorf("MikroTik VSA length: want %d, got %d (raw: %x)", wantLen, len(vsa), vsa)
 	}
 	if !bytes.Contains(vsa, []byte(rateStr)) {
-		t.Errorf("expected rate limit %q in VSA, got: %x", rateStr, vsa)
+		t.Errorf("expected MikroTik rate limit %q in VSA, got: %x", rateStr, vsa)
+	}
+	// WISPr bandwidth
+	if wispr.WISPrBandwidthMaxDown_Get(resp) != wispr.WISPrBandwidthMaxDown(2048000) {
+		t.Errorf("expected WISPr down 2048000 bps, got %d", wispr.WISPrBandwidthMaxDown_Get(resp))
+	}
+	if wispr.WISPrBandwidthMaxUp_Get(resp) != wispr.WISPrBandwidthMaxUp(1024000) {
+		t.Errorf("expected WISPr up 1024000 bps, got %d", wispr.WISPrBandwidthMaxUp_Get(resp))
+	}
+}
+
+func TestHandler_IncludesMessageAuthenticator(t *testing.T) {
+	d := openDB(t)
+	createUser(t, d, "mauser", "pass", true, nil, nil)
+	addr := startServer(t, d)
+
+	resp := sendRADIUS(t, addr, testSecret, "mauser", "pass")
+	if resp.Code != radius.CodeAccessAccept {
+		t.Fatalf("expected Accept, got %v", resp.Code)
+	}
+	ma := rfc2869.MessageAuthenticator_Get(resp)
+	if len(ma) != 16 {
+		t.Errorf("expected 16-byte Message-Authenticator, got %d bytes", len(ma))
+	}
+
+	resp2 := sendRADIUS(t, addr, testSecret, "mauser", "wrongpass")
+	if resp2.Code != radius.CodeAccessReject {
+		t.Fatalf("expected Reject, got %v", resp2.Code)
+	}
+	ma2 := rfc2869.MessageAuthenticator_Get(resp2)
+	if len(ma2) != 16 {
+		t.Errorf("expected 16-byte Message-Authenticator on Reject, got %d bytes", len(ma2))
 	}
 }

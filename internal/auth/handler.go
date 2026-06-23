@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/hmac"
+	"crypto/md5"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -8,6 +10,8 @@ import (
 
 	"layeh.com/radius"
 	"layeh.com/radius/rfc2865"
+	"layeh.com/radius/rfc2869"
+	"layeh.com/radius/vendors/wispr"
 
 	"github.com/selvakn/radius-server/internal/db"
 )
@@ -30,23 +34,23 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			slog.Info("radius reject: user not found", "username", username)
-			_ = w.Write(r.Response(radius.CodeAccessReject))
+			h.writeResponse(w, r.Response(radius.CodeAccessReject))
 			return
 		}
 		slog.Error("radius db error", "err", err)
-		_ = w.Write(r.Response(radius.CodeAccessReject))
+		h.writeResponse(w, r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	if !user.Enabled {
 		slog.Info("radius reject: user disabled", "username", username)
-		_ = w.Write(r.Response(radius.CodeAccessReject))
+		h.writeResponse(w, r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	if !VerifyPAP(r, h.secret, user.PasswordHash) {
 		slog.Info("radius reject: wrong password", "username", username)
-		_ = w.Write(r.Response(radius.CodeAccessReject))
+		h.writeResponse(w, r.Response(radius.CodeAccessReject))
 		return
 	}
 
@@ -55,11 +59,43 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	_ = rfc2865.FramedProtocol_Set(resp, rfc2865.FramedProtocol_Value_PPP)
 
 	if user.DownloadRate != nil && user.UploadRate != nil {
-		vsa := mikrotikRateLimit(*user.DownloadRate, *user.UploadRate)
-		resp.Add(radius.Type(26), vsa)
+		addBandwidthAttributes(resp, *user.DownloadRate, *user.UploadRate)
 	}
 
+	h.writeResponse(w, resp)
+}
+
+// writeResponse adds Message-Authenticator then sends the packet.
+func (h *Handler) writeResponse(w radius.ResponseWriter, resp *radius.Packet) {
+	addMessageAuthenticator(resp, h.secret)
 	_ = w.Write(resp)
+}
+
+// addMessageAuthenticator computes and sets RFC 3579 Message-Authenticator.
+// Flow: set MA=zeros, MarshalBinary (preserves RequestAuth), HMAC-MD5 over
+// those bytes, set real MA — Encode() then computes Response-Auth correctly.
+func addMessageAuthenticator(p *radius.Packet, secret string) {
+	_ = rfc2869.MessageAuthenticator_Set(p, make([]byte, 16))
+	raw, err := p.MarshalBinary()
+	if err != nil {
+		return
+	}
+	mac := hmac.New(md5.New, []byte(secret))
+	mac.Write(raw)
+	_ = rfc2869.MessageAuthenticator_Set(p, mac.Sum(nil))
+}
+
+// addBandwidthAttributes adds both MikroTik and WISPr bandwidth VSAs.
+func addBandwidthAttributes(p *radius.Packet, downKbps, upKbps int) {
+	// MikroTik Rate-Limit (vendor 14988, attr 8): string "Dk/Uk"
+	vsa := mikrotikRateLimit(downKbps, upKbps)
+	p.Add(radius.Type(26), vsa)
+
+	// WISPr-Bandwidth-Max-Down / Up: uint32 bits/sec
+	bitsDown := uint32(downKbps) * 1000
+	bitsUp := uint32(upKbps) * 1000
+	_ = wispr.WISPrBandwidthMaxDown_Set(p, wispr.WISPrBandwidthMaxDown(bitsDown))
+	_ = wispr.WISPrBandwidthMaxUp_Set(p, wispr.WISPrBandwidthMaxUp(bitsUp))
 }
 
 func mikrotikRateLimit(downKbps, upKbps int) radius.Attribute {
