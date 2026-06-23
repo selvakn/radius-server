@@ -23,7 +23,16 @@ type Server struct {
 	cfg      *config.Config
 	sessions *SessionStore
 	router   *chi.Mux
-	tmpl     *template.Template
+}
+
+var tmplFuncs = template.FuncMap{
+	"deref": func(p *int) int {
+		if p == nil {
+			return 0
+		}
+		return *p
+	},
+	"not": func(b bool) bool { return !b },
 }
 
 func New(database *db.DB, cfg *config.Config, sessions *SessionStore) *Server {
@@ -32,17 +41,12 @@ func New(database *db.DB, cfg *config.Config, sessions *SessionStore) *Server {
 		cfg:      cfg,
 		sessions: sessions,
 	}
-	s.tmpl = template.Must(template.New("").Funcs(template.FuncMap{
-		"deref": func(p *int) int {
-			if p == nil {
-				return 0
-			}
-			return *p
-		},
-		"not": func(b bool) bool { return !b },
-	}).ParseFS(templateFS, "templates/*.html"))
 	s.router = s.buildRouter()
 	return s
+}
+
+func (s *Server) parseTemplate(files ...string) (*template.Template, error) {
+	return template.New("").Funcs(tmplFuncs).ParseFS(templateFS, files...)
 }
 
 func (s *Server) Router() http.Handler {
@@ -132,13 +136,13 @@ type pageData struct {
 }
 
 func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {
-	t := s.tmpl.Lookup("login.html")
-	if t == nil {
+	t, err := s.parseTemplate("templates/login.html")
+	if err != nil {
 		http.Error(w, "template error", 500)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	_ = t.Execute(w, map[string]string{"Error": errMsg})
+	_ = t.ExecuteTemplate(w, "login.html", map[string]string{"Error": errMsg})
 }
 
 func (s *Server) renderUsers(w http.ResponseWriter, users []db.User, csrf, flash string) {
@@ -158,13 +162,13 @@ func (s *Server) renderForm(w http.ResponseWriter, user *db.User, edit bool, csr
 	s.renderLayout(w, "user_form.html", data)
 }
 
-func (s *Server) renderLayout(w http.ResponseWriter, tmplName string, data pageData) {
-	t := s.tmpl.Lookup("layout.html")
-	if t == nil {
+func (s *Server) renderLayout(w http.ResponseWriter, contentFile string, data pageData) {
+	t, err := s.parseTemplate("templates/layout.html", "templates/"+contentFile)
+	if err != nil {
 		http.Error(w, "template error", 500)
 		return
 	}
-	_ = t.Execute(w, data)
+	_ = t.ExecuteTemplate(w, "layout.html", data)
 }
 
 func setFlash(w http.ResponseWriter, msg, typ string) {
