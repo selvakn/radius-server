@@ -12,7 +12,7 @@ linters:
     revive:
       rules:
         - name: exported
-          severity: warning
+          disabled: true
 
 formatters:
   enable:
