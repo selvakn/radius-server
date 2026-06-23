@@ -56,7 +56,6 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 
 	slog.Info("radius accept", "username", username)
 	resp := r.Response(radius.CodeAccessAccept)
-	_ = rfc2865.FramedProtocol_Set(resp, rfc2865.FramedProtocol_Value_PPP)
 
 	if user.DownloadRate != nil && user.UploadRate != nil {
 		addBandwidthAttributes(resp, *user.DownloadRate, *user.UploadRate)
