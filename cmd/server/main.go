@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"layeh.com/radius"
@@ -64,7 +65,7 @@ func main() {
 	}()
 
 	slog.Info("starting admin web server", "addr", webAddr)
-	httpSrv := &http.Server{Addr: webAddr, Handler: webSrv.Router()}
+	httpSrv := &http.Server{Addr: webAddr, Handler: webSrv.Router(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("web server error", "err", err)

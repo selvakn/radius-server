@@ -7,12 +7,19 @@ linters:
     - staticcheck
     - govet
     - revive
+    - gosec
 
   settings:
     revive:
       rules:
         - name: exported
           disabled: true
+
+issues:
+  exclude-rules:
+    # crypto/md5 is required by RFC 2865 (PAP) and RFC 3579 (Message-Authenticator)
+    - linters: [gosec]
+      text: "G501"
 
 formatters:
   enable:

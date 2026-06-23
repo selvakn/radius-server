@@ -61,7 +61,11 @@ func (s *Server) Router() http.Handler {
 
 func (s *Server) Start(port int) error {
 	addr := fmt.Sprintf(":%d", port)
-	srv := &http.Server{Addr: addr, Handler: s.router}
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           s.router,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 	return srv.ListenAndServe()
 }
 
@@ -178,7 +182,7 @@ func (s *Server) renderLayout(w http.ResponseWriter, contentFile string, data pa
 }
 
 func setFlash(w http.ResponseWriter, msg, typ string) {
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // flash cookie carries no sensitive data
 		Name:    "flash",
 		Value:   typ + ":" + msg,
 		Path:    "/",
@@ -198,5 +202,5 @@ func flashFromCookie(r *http.Request) string {
 }
 
 func clearFlash(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: "flash", MaxAge: -1, Path: "/"})
+	http.SetCookie(w, &http.Cookie{Name: "flash", MaxAge: -1, Path: "/"}) //nolint:gosec
 }

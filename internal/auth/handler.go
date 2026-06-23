@@ -90,11 +90,11 @@ func addBandwidthAttributes(p *radius.Packet, downKbps, upKbps int) {
 	vsa := mikrotikRateLimit(downKbps, upKbps)
 	p.Add(radius.Type(26), vsa)
 
-	// WISPr-Bandwidth-Max-Down / Up: uint32 bits/sec
-	bitsDown := uint32(downKbps) * 1000
-	bitsUp := uint32(upKbps) * 1000
-	_ = wispr.WISPrBandwidthMaxDown_Set(p, wispr.WISPrBandwidthMaxDown(bitsDown))
-	_ = wispr.WISPrBandwidthMaxUp_Set(p, wispr.WISPrBandwidthMaxUp(bitsUp))
+	// WISPr-Bandwidth-Max-Down / Up: uint32 bits/sec (rates bounded 1–500 Mbps, no overflow)
+	bitsDown := wispr.WISPrBandwidthMaxDown(downKbps) * 1000 //nolint:gosec
+	bitsUp := wispr.WISPrBandwidthMaxUp(upKbps) * 1000       //nolint:gosec
+	_ = wispr.WISPrBandwidthMaxDown_Set(p, bitsDown)
+	_ = wispr.WISPrBandwidthMaxUp_Set(p, bitsUp)
 }
 
 func mikrotikRateLimit(downKbps, upKbps int) radius.Attribute {
@@ -105,7 +105,7 @@ func mikrotikRateLimit(downKbps, upKbps int) radius.Attribute {
 	vsa := make([]byte, 6+len(value))
 	binary.BigEndian.PutUint32(vsa[0:], mikrotikVendorID)
 	vsa[4] = mikrotikAttrRateLimit
-	vsa[5] = byte(2 + len(value)) // vendor-length includes type + length bytes
+	vsa[5] = byte(2 + len(value)) //nolint:gosec // bounded: rate string max ~15 bytes
 	copy(vsa[6:], value)
 
 	return radius.Attribute(vsa)

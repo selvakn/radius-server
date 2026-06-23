@@ -1,13 +1,14 @@
-BINARY     := radius-server
-CMD        := ./cmd/server
-BIN_DIR    := bin
-BUILD_FLAGS := -ldflags="-s -w" -trimpath
+BINARY       := radius-server
+CMD          := ./cmd/server
+BIN_DIR      := bin
+BUILD_FLAGS  := -ldflags="-s -w" -trimpath
+DOCKER_IMAGE ?= ghcr.io/selvakn/radius-server
 
-export GOCACHE   ?= /tmp/gocache
-export GOPATH    ?= /tmp/gopath
+export GOCACHE    ?= /tmp/gocache
+export GOPATH     ?= /tmp/gopath
 export GOMODCACHE ?= /tmp/gomodcache
 
-.PHONY: build build-linux test lint run clean check
+.PHONY: build build-linux test lint run clean check docker-build docker-push
 
 build:
 	mkdir -p $(BIN_DIR)
@@ -30,3 +31,9 @@ clean:
 	rm -rf $(BIN_DIR) coverage.out
 
 check: lint test
+
+docker-build:
+	docker build -t $(DOCKER_IMAGE):latest .
+
+docker-push:
+	docker push $(DOCKER_IMAGE):latest

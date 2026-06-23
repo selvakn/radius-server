@@ -1,0 +1,15 @@
+services:
+  radius-server:
+    image: ghcr.io/selvakn/radius-server:latest
+    restart: unless-stopped
+    ports:
+      - "1812:1812/udp"
+      - "8080:8080/tcp"
+    volumes:
+      - ./config.yaml:/etc/radius-server/config.yaml:ro
+      - radius-data:/data
+    environment:
+      - TZ=UTC
+
+volumes:
+  radius-data:
