@@ -281,8 +281,8 @@ func TestUpdateUser(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", fmt.Sprintf("/users/%d", u.ID), strings.NewReader(url.Values{
 		"password":      {"newpass"},
-		"download_rate": {"1024"},
-		"upload_rate":   {"512"},
+		"download_rate": {"2"},
+		"upload_rate":   {"1"},
 		"_csrf":         {sess.CSRFToken},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -293,7 +293,7 @@ func TestUpdateUser(t *testing.T) {
 		t.Errorf("expected redirect after update, got %d: %s", rec.Code, rec.Body.String())
 	}
 	u2, _ := d.GetUserByUsername("toupdate")
-	if u2.DownloadRate == nil || *u2.DownloadRate != 1024 {
-		t.Error("expected download rate 1024")
+	if u2.DownloadRate == nil || *u2.DownloadRate != 2000 {
+		t.Errorf("expected download rate 2000 kbps, got %v", u2.DownloadRate)
 	}
 }

@@ -8,10 +8,10 @@
   {{end}}
   <label>Password{{if .Edit}} (leave blank to keep current){{end}}</label>
   <input type="password" name="password" {{if not .Edit}}required{{end}} style="display:block;margin-bottom:8px">
-  <label>Download Rate (kbps, blank = unlimited)</label>
-  <input type="number" name="download_rate" value="{{if .User.DownloadRate}}{{deref .User.DownloadRate}}{{end}}" min="1" style="display:block;margin-bottom:8px">
-  <label>Upload Rate (kbps, blank = unlimited)</label>
-  <input type="number" name="upload_rate" value="{{if .User.UploadRate}}{{deref .User.UploadRate}}{{end}}" min="1" style="display:block;margin-bottom:8px">
+  <label>Download Rate Mbps (1–500, blank = unlimited)</label>
+  <input type="number" name="download_rate" value="{{if .User.DownloadRate}}{{mbps .User.DownloadRate}}{{end}}" min="1" max="500" style="display:block;margin-bottom:8px">
+  <label>Upload Rate Mbps (1–500, blank = unlimited)</label>
+  <input type="number" name="upload_rate" value="{{if .User.UploadRate}}{{mbps .User.UploadRate}}{{end}}" min="1" max="500" style="display:block;margin-bottom:8px">
   <input type="submit" value="{{if .Edit}}Update{{else}}Create{{end}}">
   <a href="/" style="margin-left:8px">cancel</a>
 </form>

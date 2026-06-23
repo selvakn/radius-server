@@ -201,14 +201,16 @@ func parseRates(r *http.Request) (*int, *int) {
 	var down, up *int
 	if v := r.FormValue("download_rate"); v != "" {
 		n, err := strconv.Atoi(v)
-		if err == nil && n > 0 {
-			down = &n
+		if err == nil && n >= 1 && n <= 500 {
+			kbps := n * 1000
+			down = &kbps
 		}
 	}
 	if v := r.FormValue("upload_rate"); v != "" {
 		n, err := strconv.Atoi(v)
-		if err == nil && n > 0 {
-			up = &n
+		if err == nil && n >= 1 && n <= 500 {
+			kbps := n * 1000
+			up = &kbps
 		}
 	}
 	return down, up

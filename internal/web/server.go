@@ -33,6 +33,12 @@ var tmplFuncs = template.FuncMap{
 		return *p
 	},
 	"not": func(b bool) bool { return !b },
+	"mbps": func(p *int) int {
+		if p == nil {
+			return 0
+		}
+		return *p / 1000
+	},
 }
 
 func New(database *db.DB, cfg *config.Config, sessions *SessionStore) *Server {
