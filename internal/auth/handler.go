@@ -2,7 +2,7 @@ package auth
 
 import (
 	"crypto/hmac"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // HMAC-MD5 required by RFC 3579 §3.2 (Message-Authenticator)
 	"encoding/binary"
 	"errors"
 	"fmt"

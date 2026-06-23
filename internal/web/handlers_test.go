@@ -16,6 +16,12 @@ import (
 	"github.com/selvakn/radius-server/internal/web"
 )
 
+// sessionCookie builds a bare session cookie for test requests.
+// Real browsers receive this via Set-Cookie; Secure is irrelevant in unit tests.
+func sessionCookie(token string) *http.Cookie {
+	return &http.Cookie{Name: "rsession", Value: token} //nolint:gosec // test-only cookie, no browser security attributes needed
+}
+
 func makeHash(t *testing.T, pass string) string {
 	t.Helper()
 	h, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.MinCost)
@@ -93,7 +99,7 @@ func TestUsersIndex_Authenticated(t *testing.T) {
 	token := sessions.Create("admin")
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rec.Code)
@@ -112,7 +118,7 @@ func TestCreateUser_Success(t *testing.T) {
 		"_csrf":    {sess.CSRFToken},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
@@ -137,7 +143,7 @@ func TestDisableUser(t *testing.T) {
 		"_csrf": {sess.CSRFToken},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	u2, _ := d.GetUserByUsername("victim")
@@ -159,7 +165,7 @@ func TestDeleteUser(t *testing.T) {
 		"_csrf": {sess.CSRFToken},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	_, err := d.GetUserByUsername("todelete")
@@ -178,7 +184,7 @@ func TestCSRF_MissingToken(t *testing.T) {
 		"password": {"pass"},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
@@ -205,7 +211,7 @@ func TestLogout(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/logout", nil)
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
@@ -223,7 +229,7 @@ func TestGetNewUser_Renders(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/users/new", nil)
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
@@ -240,7 +246,7 @@ func TestGetEditUser_Renders(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", fmt.Sprintf("/users/%d/edit", u.ID), nil)
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
@@ -261,7 +267,7 @@ func TestEnableUser(t *testing.T) {
 		"_csrf": {sess.CSRFToken},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	u2, _ := d.GetUserByUsername("tooenable")
@@ -286,7 +292,7 @@ func TestUpdateUser(t *testing.T) {
 		"_csrf":         {sess.CSRFToken},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "rsession", Value: token})
+	req.AddCookie(sessionCookie(token))
 	srv.Router().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
