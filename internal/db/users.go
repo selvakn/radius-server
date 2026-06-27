@@ -101,7 +101,7 @@ type scanner interface {
 func scanUser(s scanner) (*User, error) {
 	var u User
 	var enabled int
-	var createdAt, updatedAt string
+	var createdAt, updatedAt interface{}
 	err := s.Scan(&u.ID, &u.Username, &u.PasswordHash, &enabled, &u.DownloadRate, &u.UploadRate, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -110,8 +110,8 @@ func scanUser(s scanner) (*User, error) {
 		return nil, fmt.Errorf("scan user: %w", err)
 	}
 	u.Enabled = enabled != 0
-	u.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
-	u.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAt)
+	u.CreatedAt = parseTime(createdAt)
+	u.UpdatedAt = parseTime(updatedAt)
 	return &u, nil
 }
 

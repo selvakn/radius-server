@@ -103,20 +103,21 @@ func scanSessions(rows *sql.Rows) ([]Session, error) {
 	var sessions []Session
 	for rows.Next() {
 		var s Session
-		var startedAt, updatedAt string
-		var stoppedAt sql.NullString
+		var startedAt, updatedAt, stoppedAtRaw interface{}
 		err := rows.Scan(&s.ID, &s.SessionID, &s.Username, &s.NasIP,
-			&startedAt, &updatedAt, &stoppedAt,
+			&startedAt, &updatedAt, &stoppedAtRaw,
 			&s.BytesIn, &s.BytesOut, &s.SessionTime,
 			&s.TerminateCause, &s.Status)
 		if err != nil {
 			return nil, fmt.Errorf("scan session: %w", err)
 		}
-		s.StartedAt, _ = time.Parse("2006-01-02 15:04:05", startedAt)
-		s.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAt)
-		if stoppedAt.Valid {
-			t, _ := time.Parse("2006-01-02 15:04:05", stoppedAt.String)
-			s.StoppedAt = &t
+		s.StartedAt = parseTime(startedAt)
+		s.UpdatedAt = parseTime(updatedAt)
+		if stoppedAtRaw != nil {
+			t := parseTime(stoppedAtRaw)
+			if !t.IsZero() {
+				s.StoppedAt = &t
+			}
 		}
 		sessions = append(sessions, s)
 	}
@@ -130,3 +131,32 @@ func scanSessions(rows *sql.Rows) ([]Session, error) {
 }
 
 var ErrSessionNotFound = errors.New("session not found")
+
+var timeFormats = []string{
+	"2006-01-02 15:04:05",
+	"2006-01-02T15:04:05Z",
+	"2006-01-02T15:04:05",
+	time.RFC3339,
+	time.RFC3339Nano,
+}
+
+func parseTime(v interface{}) time.Time {
+	switch t := v.(type) {
+	case time.Time:
+		return t
+	case string:
+		return parseTimeString(t)
+	case []byte:
+		return parseTimeString(string(t))
+	}
+	return time.Time{}
+}
+
+func parseTimeString(s string) time.Time {
+	for _, f := range timeFormats {
+		if t, err := time.Parse(f, s); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
+}
