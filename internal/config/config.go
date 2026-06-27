@@ -16,8 +16,9 @@ type Config struct {
 }
 
 type RadiusConfig struct {
-	SharedSecret string `yaml:"shared_secret"`
-	Port         int    `yaml:"port"`
+	SharedSecret   string `yaml:"shared_secret"`
+	Port           int    `yaml:"port"`
+	AccountingPort int    `yaml:"accounting_port"`
 }
 
 type DatabaseConfig struct {
@@ -63,6 +64,9 @@ func (c *Config) validate() error {
 func (c *Config) applyDefaults() {
 	if c.Radius.Port == 0 {
 		c.Radius.Port = 1812
+	}
+	if c.Radius.AccountingPort == 0 {
+		c.Radius.AccountingPort = 1813
 	}
 	if c.Web.Port == 0 {
 		c.Web.Port = 8080

@@ -1,0 +1,27 @@
+{{define "content"}}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <strong>Sessions{{if .Username}} — {{.Username}}{{end}} ({{len .Sessions}})</strong>
+  <span><a href="/">users</a>{{if .Username}} · <a href="/sessions">all sessions</a>{{end}}</span>
+</div>
+<table>
+<thead>
+  <tr><th>User</th><th>Session ID</th><th>NAS</th><th>Started</th><th>Duration</th><th>Upload</th><th>Download</th><th>Status</th></tr>
+</thead>
+<tbody>
+{{range .Sessions}}
+<tr>
+  <td><a href="/sessions?user={{.Username}}">{{.Username}}</a></td>
+  <td style="font-size:11px;color:#888">{{slice .SessionID 0 (min 8 (len .SessionID))}}</td>
+  <td style="font-size:11px;color:#888">{{.NasIP}}</td>
+  <td style="font-size:12px">{{fmttime .StartedAt}}</td>
+  <td>{{fmtduration .SessionTime}}</td>
+  <td>{{fmtbytes .BytesIn}}</td>
+  <td>{{fmtbytes .BytesOut}}</td>
+  <td>{{if eq .Status "active"}}<span class="badge badge-on">active</span>{{else}}<span class="badge badge-off">stopped</span>{{end}}</td>
+</tr>
+{{else}}
+<tr><td colspan="8" style="color:#666;padding:16px 8px">no sessions</td></tr>
+{{end}}
+</tbody>
+</table>
+{{end}}

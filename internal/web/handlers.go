@@ -9,6 +9,24 @@ import (
 	"github.com/selvakn/radius-server/internal/db"
 )
 
+func (s *Server) handleGetSessions(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("user")
+	var sessions []db.Session
+	var err error
+	if username != "" {
+		sessions, err = s.db.ListSessionsByUser(username)
+	} else {
+		sessions, err = s.db.ListRecentSessions(200)
+	}
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	sess := sessionFromContext(r.Context())
+	data := pageData{Sessions: sessions, Username: username, CSRFToken: sess.CSRFToken}
+	s.renderLayout(w, "sessions.html", data)
+}
+
 func (s *Server) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 	s.renderLogin(w, "")
 }

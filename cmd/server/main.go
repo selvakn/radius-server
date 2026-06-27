@@ -15,6 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"layeh.com/radius"
 
+	"github.com/selvakn/radius-server/internal/accounting"
 	"github.com/selvakn/radius-server/internal/auth"
 	"github.com/selvakn/radius-server/internal/config"
 	"github.com/selvakn/radius-server/internal/db"
@@ -47,10 +48,19 @@ func main() {
 	defer stop()
 
 	radiusAddr := fmt.Sprintf(":%d", cfg.Radius.Port)
+	secret := radius.StaticSecretSource([]byte(cfg.Radius.SharedSecret))
+
 	radiusSrv := &radius.PacketServer{
 		Addr:         radiusAddr,
 		Handler:      auth.New(database, cfg.Radius.SharedSecret),
-		SecretSource: radius.StaticSecretSource([]byte(cfg.Radius.SharedSecret)),
+		SecretSource: secret,
+	}
+
+	acctAddr := fmt.Sprintf(":%d", cfg.Radius.AccountingPort)
+	acctSrv := &radius.PacketServer{
+		Addr:         acctAddr,
+		Handler:      accounting.New(database),
+		SecretSource: secret,
 	}
 
 	sessions := web.NewSessionStore()
@@ -61,6 +71,13 @@ func main() {
 	go func() {
 		if err := radiusSrv.ListenAndServe(); err != nil {
 			slog.Error("radius server error", "err", err)
+		}
+	}()
+
+	slog.Info("starting RADIUS accounting server", "addr", acctAddr)
+	go func() {
+		if err := acctSrv.ListenAndServe(); err != nil {
+			slog.Error("accounting server error", "err", err)
 		}
 	}()
 
@@ -75,6 +92,7 @@ func main() {
 	<-ctx.Done()
 	slog.Info("shutting down")
 	_ = radiusSrv.Shutdown(context.Background())
+	_ = acctSrv.Shutdown(context.Background())
 	_ = httpSrv.Shutdown(context.Background())
 }
 

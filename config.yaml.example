@@ -1,6 +1,7 @@
 radius:
   shared_secret: "change-me-in-production"
   port: 1812
+  accounting_port: 1813
 
 database:
   path: "./radius.db"

@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"math"
 	"net/http"
 	"time"
 
@@ -38,6 +39,49 @@ var tmplFuncs = template.FuncMap{
 			return 0
 		}
 		return *p / 1000
+	},
+	"min": func(a, b int) int {
+		if a < b {
+			return a
+		}
+		return b
+	},
+	"slice": func(s string, i, j int) string { return s[i:j] },
+	"fmtbytes": func(b int64) string {
+		if b == 0 {
+			return "—"
+		}
+		const unit = 1024
+		if b < unit {
+			return fmt.Sprintf("%d B", b)
+		}
+		div, exp := int64(unit), 0
+		for n := b / unit; n >= unit; n /= unit {
+			div *= unit
+			exp++
+		}
+		return fmt.Sprintf("%.1f %cB", math.Round(float64(b)/float64(div)*10)/10, "KMGT"[exp])
+	},
+	"fmtduration": func(secs int64) string {
+		if secs == 0 {
+			return "—"
+		}
+		h := secs / 3600
+		m := (secs % 3600) / 60
+		s := secs % 60
+		if h > 0 {
+			return fmt.Sprintf("%dh%02dm", h, m)
+		}
+		if m > 0 {
+			return fmt.Sprintf("%dm%02ds", m, s)
+		}
+		return fmt.Sprintf("%ds", s)
+	},
+	"fmttime": func(t time.Time) string {
+		if t.IsZero() {
+			return "—"
+		}
+		return t.Format("01-02 15:04")
 	},
 }
 
@@ -80,6 +124,7 @@ func (s *Server) buildRouter() *chi.Mux {
 		r.Use(s.sessionMiddleware)
 		r.Post("/logout", s.handlePostLogout)
 		r.Get("/", s.handleGetUsers)
+		r.Get("/sessions", s.handleGetSessions)
 		r.Get("/users/new", s.handleGetNewUser)
 		r.With(s.csrfMiddleware).Post("/users", s.handlePostCreateUser)
 		r.Get("/users/{id}/edit", s.handleGetEditUser)
@@ -143,6 +188,8 @@ type pageData struct {
 	CSRFToken string
 	Flash     string
 	FlashType string
+	Sessions  []db.Session
+	Username  string
 }
 
 func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {
