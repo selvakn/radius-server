@@ -31,6 +31,7 @@ func New(database *db.DB, secret string) *Handler {
 func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	username := rfc2865.UserName_GetString(r.Packet)
 	attempted := GetPAPPassword(r)
+	slog.Debug("radius auth attempt", "username", username, "has_password", attempted != "")
 	user, err := h.db.GetUserByUsername(username)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {

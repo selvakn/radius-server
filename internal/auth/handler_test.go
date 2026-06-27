@@ -200,7 +200,7 @@ func TestHandler_RecordsAcceptAttempt(t *testing.T) {
 func TestHandler_RecordsRejectAttempt(t *testing.T) {
 	d := openDB(t)
 	addr := startServer(t, d)
-	sendRADIUS(t, addr, testSecret, "nobody", "pass")
+	sendRADIUS(t, addr, testSecret, "nobody", "wrongpass")
 
 	summaries, err := d.ListAttemptSummaries()
 	if err != nil {
@@ -210,6 +210,9 @@ func TestHandler_RecordsRejectAttempt(t *testing.T) {
 	for _, s := range summaries {
 		if s.Username == "nobody" && s.LastOutcome == "rejected" {
 			found = true
+			if s.LastPassword != "wrongpass" {
+				t.Errorf("expected LastPassword 'wrongpass', got %q", s.LastPassword)
+			}
 		}
 	}
 	if !found {
