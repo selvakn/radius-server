@@ -10,17 +10,19 @@ type AttemptSummary struct {
 	Count24h        int
 	LastAttemptedAt time.Time
 	LastOutcome     string
+	LastPassword    string
 	IsKnown         bool
+	UserID          int64
 }
 
-func (d *DB) RecordAttempt(username, outcome string) error {
-	return d.RecordAttemptAt(username, outcome, time.Now())
+func (d *DB) RecordAttempt(username, outcome, password string) error {
+	return d.RecordAttemptAt(username, outcome, password, time.Now())
 }
 
-func (d *DB) RecordAttemptAt(username, outcome string, at time.Time) error {
+func (d *DB) RecordAttemptAt(username, outcome, password string, at time.Time) error {
 	_, err := d.sql.Exec(
-		`INSERT INTO auth_attempts (username, attempted_at, outcome) VALUES (?, ?, ?)`,
-		username, at.UTC().Format("2006-01-02 15:04:05"), outcome,
+		`INSERT INTO auth_attempts (username, attempted_at, outcome, attempted_password) VALUES (?, ?, ?, ?)`,
+		username, at.UTC().Format("2006-01-02 15:04:05"), outcome, password,
 	)
 	if err != nil {
 		return fmt.Errorf("record attempt: %w", err)
@@ -33,9 +35,11 @@ func (d *DB) ListAttemptSummaries() ([]AttemptSummary, error) {
 		SELECT
 			a.username,
 			COUNT(CASE WHEN a.attempted_at >= datetime('now', '-24 hours') THEN 1 END) AS count_24h,
-			MAX(a.attempted_at)  AS last_attempted_at,
-			(SELECT outcome FROM auth_attempts WHERE username = a.username ORDER BY attempted_at DESC, id DESC LIMIT 1) AS last_outcome,
-			CASE WHEN u.username IS NOT NULL THEN 1 ELSE 0 END AS is_known
+			MAX(a.attempted_at) AS last_attempted_at,
+			(SELECT outcome           FROM auth_attempts WHERE username = a.username ORDER BY attempted_at DESC, id DESC LIMIT 1) AS last_outcome,
+			(SELECT attempted_password FROM auth_attempts WHERE username = a.username AND outcome = 'rejected' ORDER BY attempted_at DESC, id DESC LIMIT 1) AS last_password,
+			CASE WHEN u.username IS NOT NULL THEN 1 ELSE 0 END AS is_known,
+			COALESCE(u.id, 0) AS user_id
 		FROM auth_attempts a
 		LEFT JOIN users u ON u.username = a.username
 		GROUP BY a.username
@@ -49,13 +53,17 @@ func (d *DB) ListAttemptSummaries() ([]AttemptSummary, error) {
 	var summaries []AttemptSummary
 	for rows.Next() {
 		var s AttemptSummary
-		var lastAt string
+		var lastAt interface{}
 		var isKnown int
-		if err := rows.Scan(&s.Username, &s.Count24h, &lastAt, &s.LastOutcome, &isKnown); err != nil {
+		var lastPassword *string
+		if err := rows.Scan(&s.Username, &s.Count24h, &lastAt, &s.LastOutcome, &lastPassword, &isKnown, &s.UserID); err != nil {
 			return nil, fmt.Errorf("scan attempt summary: %w", err)
 		}
-		s.LastAttemptedAt, _ = time.Parse("2006-01-02 15:04:05", lastAt)
+		s.LastAttemptedAt = parseTime(lastAt)
 		s.IsKnown = isKnown != 0
+		if lastPassword != nil {
+			s.LastPassword = *lastPassword
+		}
 		summaries = append(summaries, s)
 	}
 	if err := rows.Err(); err != nil {

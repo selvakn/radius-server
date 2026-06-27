@@ -341,8 +341,8 @@ func TestGetAttempts_EmptyState(t *testing.T) {
 func TestGetAttempts_AddButtonOnlyForUnknown(t *testing.T) {
 	srv, d, sessions := setupServer(t)
 	_ = d.CreateUser(db.User{Username: "knownuser", PasswordHash: "h", Enabled: true})
-	_ = d.RecordAttempt("knownuser", "accepted")
-	_ = d.RecordAttempt("unknownuser", "rejected")
+	_ = d.RecordAttempt("knownuser", "accepted", "")
+	_ = d.RecordAttempt("unknownuser", "rejected", "")
 	token := sessions.Create("admin")
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/attempts", nil)

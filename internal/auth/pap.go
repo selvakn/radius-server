@@ -6,8 +6,12 @@ import (
 	"layeh.com/radius/rfc2865"
 )
 
+func GetPAPPassword(req *radius.Request) string {
+	return rfc2865.UserPassword_GetString(req.Packet)
+}
+
 func VerifyPAP(req *radius.Request, secret, passwordHash string) bool {
-	plain := rfc2865.UserPassword_GetString(req.Packet)
+	plain := GetPAPPassword(req)
 	if plain == "" {
 		return false
 	}

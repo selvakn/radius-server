@@ -30,36 +30,37 @@ func New(database *db.DB, secret string) *Handler {
 
 func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	username := rfc2865.UserName_GetString(r.Packet)
+	attempted := GetPAPPassword(r)
 	user, err := h.db.GetUserByUsername(username)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			slog.Info("radius reject: user not found", "username", username)
-			h.record(username, "rejected")
+			h.record(username, "rejected", attempted)
 			h.writeResponse(w, r.Response(radius.CodeAccessReject))
 			return
 		}
 		slog.Error("radius db error", "err", err)
-		h.record(username, "rejected")
+		h.record(username, "rejected", attempted)
 		h.writeResponse(w, r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	if !user.Enabled {
 		slog.Info("radius reject: user disabled", "username", username)
-		h.record(username, "rejected")
+		h.record(username, "rejected", attempted)
 		h.writeResponse(w, r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	if !VerifyPAP(r, h.secret, user.PasswordHash) {
 		slog.Info("radius reject: wrong password", "username", username)
-		h.record(username, "rejected")
+		h.record(username, "rejected", attempted)
 		h.writeResponse(w, r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	slog.Info("radius accept", "username", username)
-	h.record(username, "accepted")
+	h.record(username, "accepted", "")
 	resp := r.Response(radius.CodeAccessAccept)
 
 	if user.DownloadRate != nil && user.UploadRate != nil {
@@ -69,8 +70,8 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	h.writeResponse(w, resp)
 }
 
-func (h *Handler) record(username, outcome string) {
-	if err := h.db.RecordAttempt(username, outcome); err != nil {
+func (h *Handler) record(username, outcome, password string) {
+	if err := h.db.RecordAttempt(username, outcome, password); err != nil {
 		slog.Error("record attempt", "err", err)
 	}
 }

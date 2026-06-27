@@ -9,7 +9,7 @@ import (
 
 func TestRecordAttempt(t *testing.T) {
 	d := openTestDB(t)
-	if err := d.RecordAttempt("alice", "accepted"); err != nil {
+	if err := d.RecordAttempt("alice", "accepted", ""); err != nil {
 		t.Fatalf("record: %v", err)
 	}
 }
@@ -17,7 +17,7 @@ func TestRecordAttempt(t *testing.T) {
 func TestListAttemptSummaries_Count24h(t *testing.T) {
 	d := openTestDB(t)
 	for i := 0; i < 3; i++ {
-		_ = d.RecordAttempt("bob", "rejected")
+		_ = d.RecordAttempt("bob", "rejected", "")
 	}
 	summaries, err := d.ListAttemptSummaries()
 	if err != nil {
@@ -33,8 +33,8 @@ func TestListAttemptSummaries_Count24h(t *testing.T) {
 
 func TestListAttemptSummaries_LastOutcome(t *testing.T) {
 	d := openTestDB(t)
-	_ = d.RecordAttempt("carol", "rejected")
-	_ = d.RecordAttempt("carol", "accepted")
+	_ = d.RecordAttempt("carol", "rejected", "")
+	_ = d.RecordAttempt("carol", "accepted", "")
 	summaries, _ := d.ListAttemptSummaries()
 	if len(summaries) == 0 {
 		t.Fatal("expected summary")
@@ -47,8 +47,8 @@ func TestListAttemptSummaries_LastOutcome(t *testing.T) {
 func TestListAttemptSummaries_IsKnown(t *testing.T) {
 	d := openTestDB(t)
 	_ = d.CreateUser(db.User{Username: "known", PasswordHash: "h", Enabled: true})
-	_ = d.RecordAttempt("known", "accepted")
-	_ = d.RecordAttempt("unknown", "rejected")
+	_ = d.RecordAttempt("known", "accepted", "")
+	_ = d.RecordAttempt("unknown", "rejected", "")
 
 	summaries, err := d.ListAttemptSummaries()
 	if err != nil {
@@ -69,7 +69,7 @@ func TestListAttemptSummaries_IsKnown(t *testing.T) {
 func TestListAttemptSummaries_Cap200(t *testing.T) {
 	d := openTestDB(t)
 	for i := 0; i < 210; i++ {
-		_ = d.RecordAttempt(randomUsername(i), "rejected")
+		_ = d.RecordAttempt(randomUsername(i), "rejected", "")
 	}
 	summaries, err := d.ListAttemptSummaries()
 	if err != nil {
@@ -82,9 +82,9 @@ func TestListAttemptSummaries_Cap200(t *testing.T) {
 
 func TestPurgeOldAttempts(t *testing.T) {
 	d := openTestDB(t)
-	_ = d.RecordAttempt("old", "rejected")
-	_ = d.RecordAttemptAt("old", "rejected", time.Now().Add(-8*24*time.Hour))
-	_ = d.RecordAttempt("recent", "accepted")
+	_ = d.RecordAttempt("old", "rejected", "")
+	_ = d.RecordAttemptAt("old", "rejected", "", time.Now().Add(-8*24*time.Hour))
+	_ = d.RecordAttempt("recent", "accepted", "")
 
 	if err := d.PurgeOldAttempts(); err != nil {
 		t.Fatalf("purge: %v", err)
