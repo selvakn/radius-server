@@ -124,6 +124,7 @@ func (s *Server) buildRouter() *chi.Mux {
 		r.Use(s.sessionMiddleware)
 		r.Post("/logout", s.handlePostLogout)
 		r.Get("/", s.handleGetUsers)
+		r.Get("/attempts", s.handleGetAttempts)
 		r.Get("/sessions", s.handleGetSessions)
 		r.Get("/users/new", s.handleGetNewUser)
 		r.With(s.csrfMiddleware).Post("/users", s.handlePostCreateUser)
@@ -190,6 +191,7 @@ type pageData struct {
 	FlashType string
 	Sessions  []db.Session
 	Username  string
+	Attempts  []db.AttemptSummary
 }
 
 func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {

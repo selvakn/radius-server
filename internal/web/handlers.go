@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -8,6 +9,16 @@ import (
 
 	"github.com/selvakn/radius-server/internal/db"
 )
+
+func (s *Server) handleGetAttempts(w http.ResponseWriter, r *http.Request) {
+	attempts, err := s.db.ListAttemptSummaries()
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	sess := sessionFromContext(r.Context())
+	s.renderLayout(w, "attempts.html", pageData{Attempts: attempts, CSRFToken: sess.CSRFToken})
+}
 
 func (s *Server) handleGetSessions(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("user")
@@ -77,7 +88,8 @@ func (s *Server) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetNewUser(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFromContext(r.Context())
-	s.renderForm(w, &db.User{}, false, sess.CSRFToken, "")
+	u := &db.User{Username: r.URL.Query().Get("username")}
+	s.renderForm(w, u, false, sess.CSRFToken, "")
 }
 
 func (s *Server) handlePostCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +120,11 @@ func (s *Server) handlePostCreateUser(w http.ResponseWriter, r *http.Request) {
 		DownloadRate: down,
 		UploadRate:   up,
 	}); err != nil {
+		if existing, lookupErr := s.db.GetUserByUsername(username); lookupErr == nil {
+			setFlash(w, "User already exists", "err")
+			http.Redirect(w, r, fmt.Sprintf("/users/%d/edit", existing.ID), http.StatusSeeOther) //nolint:gosec // redirect target is an int64 DB ID, not user-controlled
+			return
+		}
 		sess := sessionFromContext(r.Context())
 		s.renderForm(w, &db.User{}, false, sess.CSRFToken, "Username already exists")
 		return

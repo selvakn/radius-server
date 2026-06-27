@@ -1,0 +1,24 @@
+{{define "content"}}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <strong>Login Attempts ({{len .Attempts}})</strong>
+</div>
+<table>
+<thead>
+  <tr><th>Username</th><th>24h Attempts</th><th>Last Attempt</th><th>Last Outcome</th><th>Status</th><th>Action</th></tr>
+</thead>
+<tbody>
+{{range .Attempts}}
+<tr>
+  <td>{{.Username}}</td>
+  <td>{{if .Count24h}}{{.Count24h}}{{else}}—{{end}}</td>
+  <td style="font-size:12px">{{fmttime .LastAttemptedAt}}</td>
+  <td>{{if eq .LastOutcome "accepted"}}<span class="badge badge-on">accepted</span>{{else}}<span class="badge badge-off">rejected</span>{{end}}</td>
+  <td>{{if .IsKnown}}<span class="badge" style="background:#222;color:#888">known</span>{{else}}<span class="badge" style="background:#2a2a1a;color:#cc9900">unknown</span>{{end}}</td>
+  <td>{{if not .IsKnown}}<a class="add-from-attempt" href="/users/new?username={{.Username}}">add</a>{{end}}</td>
+</tr>
+{{else}}
+<tr><td colspan="6" style="color:#666;padding:16px 8px">no authentication attempts recorded yet</td></tr>
+{{end}}
+</tbody>
+</table>
+{{end}}

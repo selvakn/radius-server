@@ -89,12 +89,6 @@ func TestPurgeOldAttempts(t *testing.T) {
 	if err := d.PurgeOldAttempts(); err != nil {
 		t.Fatalf("purge: %v", err)
 	}
-	summaries, _ := d.ListAttemptSummaries()
-	for _, s := range summaries {
-		if s.Username == "old" && s.Count24h == 0 {
-			// old-only attempt was purged, remaining recent still shows
-		}
-	}
 	// verify the 8-day-old row is gone
 	recent, _ := d.ListAttemptSummaries()
 	found := false
