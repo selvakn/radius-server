@@ -303,3 +303,89 @@ func TestUpdateUser(t *testing.T) {
 		t.Errorf("expected download rate 2000 kbps, got %v", u2.DownloadRate)
 	}
 }
+
+func TestGetAttempts_Unauthenticated(t *testing.T) {
+	srv, _, _ := setupServer(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/attempts", nil)
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
+		t.Errorf("expected redirect to login, got %d", rec.Code)
+	}
+}
+
+func TestGetAttempts_Authenticated(t *testing.T) {
+	srv, _, sessions := setupServer(t)
+	token := sessions.Create("admin")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/attempts", nil)
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+}
+
+func TestGetAttempts_EmptyState(t *testing.T) {
+	srv, _, sessions := setupServer(t)
+	token := sessions.Create("admin")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/attempts", nil)
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if !strings.Contains(rec.Body.String(), "no authentication attempts") {
+		t.Error("expected empty state message")
+	}
+}
+
+func TestGetAttempts_AddButtonOnlyForUnknown(t *testing.T) {
+	srv, d, sessions := setupServer(t)
+	_ = d.CreateUser(db.User{Username: "knownuser", PasswordHash: "h", Enabled: true})
+	_ = d.RecordAttempt("knownuser", "accepted")
+	_ = d.RecordAttempt("unknownuser", "rejected")
+	token := sessions.Create("admin")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/attempts", nil)
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	body := rec.Body.String()
+	if strings.Contains(body, "add-from-attempt") && strings.Count(body, "add-from-attempt") != 1 {
+		t.Error("expected exactly 1 add button (for unknown user only)")
+	}
+}
+
+func TestGetNewUser_UsernameQueryParam(t *testing.T) {
+	srv, _, sessions := setupServer(t)
+	token := sessions.Create("admin")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/users/new?username=prefilled", nil)
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "prefilled") {
+		t.Error("expected pre-filled username in form")
+	}
+}
+
+func TestCreateUser_DuplicateRedirectsToEdit(t *testing.T) {
+	srv, d, sessions := setupServer(t)
+	_ = d.CreateUser(db.User{Username: "existing", PasswordHash: makeHash(t, "pass"), Enabled: true})
+	existing, _ := d.GetUserByUsername("existing")
+	token := sessions.Create("admin")
+	sess, _ := sessions.Get(token)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/users", strings.NewReader(url.Values{
+		"username": {"existing"},
+		"password": {"anypass"},
+		"_csrf":    {sess.CSRFToken},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	location := rec.Header().Get("Location")
+	if !strings.Contains(location, fmt.Sprintf("/users/%d/edit", existing.ID)) {
+		t.Errorf("expected redirect to edit page, got location: %q", location)
+	}
+}

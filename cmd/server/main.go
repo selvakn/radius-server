@@ -63,6 +63,8 @@ func main() {
 		SecretSource: secret,
 	}
 
+	go startPurgeLoop(ctx, database)
+
 	sessions := web.NewSessionStore()
 	webSrv := web.New(database, cfg, sessions)
 	webAddr := fmt.Sprintf(":%d", cfg.Web.Port)
@@ -94,6 +96,24 @@ func main() {
 	_ = radiusSrv.Shutdown(context.Background())
 	_ = acctSrv.Shutdown(context.Background())
 	_ = httpSrv.Shutdown(context.Background())
+}
+
+func startPurgeLoop(ctx context.Context, database *db.DB) {
+	if err := database.PurgeOldAttempts(); err != nil {
+		slog.Error("initial purge", "err", err)
+	}
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := database.PurgeOldAttempts(); err != nil {
+				slog.Error("periodic purge", "err", err)
+			}
+		}
+	}
 }
 
 func runHashPassword() {

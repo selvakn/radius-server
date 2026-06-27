@@ -175,3 +175,44 @@ func TestHandler_IncludesMessageAuthenticator(t *testing.T) {
 		t.Errorf("expected 16-byte Message-Authenticator on Reject, got %d bytes", len(ma2))
 	}
 }
+
+func TestHandler_RecordsAcceptAttempt(t *testing.T) {
+	d := openDB(t)
+	createUser(t, d, "recorded", "pass", true, nil, nil)
+	addr := startServer(t, d)
+	sendRADIUS(t, addr, testSecret, "recorded", "pass")
+
+	summaries, err := d.ListAttemptSummaries()
+	if err != nil {
+		t.Fatalf("list summaries: %v", err)
+	}
+	found := false
+	for _, s := range summaries {
+		if s.Username == "recorded" && s.LastOutcome == "accepted" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected accepted attempt to be recorded")
+	}
+}
+
+func TestHandler_RecordsRejectAttempt(t *testing.T) {
+	d := openDB(t)
+	addr := startServer(t, d)
+	sendRADIUS(t, addr, testSecret, "nobody", "pass")
+
+	summaries, err := d.ListAttemptSummaries()
+	if err != nil {
+		t.Fatalf("list summaries: %v", err)
+	}
+	found := false
+	for _, s := range summaries {
+		if s.Username == "nobody" && s.LastOutcome == "rejected" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected rejected attempt to be recorded")
+	}
+}

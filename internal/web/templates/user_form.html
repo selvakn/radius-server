@@ -4,7 +4,7 @@
   <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
   {{if not .Edit}}
   <label>Username</label>
-  <input type="text" name="username" required style="display:block;margin-bottom:8px">
+  <input type="text" name="username" value="{{.User.Username}}" required style="display:block;margin-bottom:8px">
   {{end}}
   <label>Password{{if .Edit}} (leave blank to keep current){{end}}</label>
   <input type="password" name="password" {{if not .Edit}}required{{end}} style="display:block;margin-bottom:8px">
