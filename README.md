@@ -39,14 +39,18 @@ web:
 
 admins:
   - username: admin
-    password_hash: "$2a$12$..."
+    password_hash: "$2a$12$..."   # generate with: ./radius-server hash-password
 ```
 
-Generate a password hash:
+Generate a bcrypt hash for the `password_hash` field:
 
 ```
 ./radius-server hash-password
+Enter password: ****
+$2a$12$...
 ```
+
+Copy the output and paste it as the `password_hash` value for that admin entry.
 
 ## Build
 
