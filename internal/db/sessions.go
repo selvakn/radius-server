@@ -82,6 +82,37 @@ func (d *DB) StopSession(sessionID string, bytesIn, bytesOut, sessionTime int64,
 	return err
 }
 
+func (d *DB) GetActiveSessionByID(id int64) (*Session, error) {
+	rows, err := d.sql.Query(`
+		SELECT id, session_id, username, nas_ip, calling_station_id, started_at, updated_at,
+		       stopped_at, bytes_in, bytes_out, session_time, terminate_cause, status
+		FROM sessions WHERE id = ? AND status = 'active'`, id)
+	if err != nil {
+		return nil, fmt.Errorf("get active session: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	sessions, err := scanSessions(rows)
+	if err != nil {
+		return nil, err
+	}
+	if len(sessions) == 0 {
+		return nil, ErrSessionNotFound
+	}
+	return &sessions[0], nil
+}
+
+func (d *DB) GetActiveSessionsByUser(username string) ([]Session, error) {
+	rows, err := d.sql.Query(`
+		SELECT id, session_id, username, nas_ip, calling_station_id, started_at, updated_at,
+		       stopped_at, bytes_in, bytes_out, session_time, terminate_cause, status
+		FROM sessions WHERE username = ? AND status = 'active'`, username)
+	if err != nil {
+		return nil, fmt.Errorf("get active sessions by user: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	return scanSessions(rows)
+}
+
 func (d *DB) ListActiveSessions() ([]Session, error) {
 	rows, err := d.sql.Query(`
 		SELECT id, session_id, username, nas_ip, calling_station_id, started_at, updated_at,
