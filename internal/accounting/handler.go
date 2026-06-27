@@ -25,6 +25,7 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	sessionID := rfc2866.AcctSessionID_GetString(r.Packet)
 	username := rfc2865.UserName_GetString(r.Packet)
 	nasIP := rfc2865.NASIPAddress_Get(r.Packet).String()
+	callingStationID := rfc2865.CallingStationID_GetString(r.Packet)
 
 	bytesIn := TotalBytes(
 		int64(rfc2866.AcctInputOctets_Get(r.Packet)),
@@ -38,7 +39,7 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 
 	switch statusType {
 	case rfc2866.AcctStatusType_Value_Start:
-		if err := h.db.UpsertSessionStart(sessionID, username, nasIP, time.Now()); err != nil {
+		if err := h.db.UpsertSessionStart(sessionID, username, nasIP, callingStationID, time.Now()); err != nil {
 			slog.Error("accounting start", "err", err, "session", sessionID)
 		} else {
 			slog.Info("session start", "user", username, "session", sessionID)

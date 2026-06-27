@@ -8,32 +8,51 @@ import (
 )
 
 type Session struct {
-	ID             int64
-	SessionID      string
-	Username       string
-	NasIP          string
-	StartedAt      time.Time
-	UpdatedAt      time.Time
-	StoppedAt      *time.Time
-	BytesIn        int64
-	BytesOut       int64
-	SessionTime    int64
-	TerminateCause string
-	Status         string
+	ID               int64
+	SessionID        string
+	Username         string
+	NasIP            string
+	CallingStationID string
+	StartedAt        time.Time
+	UpdatedAt        time.Time
+	StoppedAt        *time.Time
+	BytesIn          int64
+	BytesOut         int64
+	SessionTime      int64
+	TerminateCause   string
+	Status           string
 }
 
-func (d *DB) UpsertSessionStart(sessionID, username, nasIP string, startedAt time.Time) error {
+func (d *DB) UpsertSessionStart(sessionID, username, nasIP, callingStationID string, startedAt time.Time) error {
 	_, err := d.sql.Exec(`
-		INSERT INTO sessions (session_id, username, nas_ip, started_at, updated_at, status)
-		VALUES (?, ?, ?, ?, ?, 'active')
+		INSERT INTO sessions (session_id, username, nas_ip, calling_station_id, started_at, updated_at, status)
+		VALUES (?, ?, ?, ?, ?, ?, 'active')
 		ON CONFLICT(session_id) DO UPDATE SET
-			updated_at = excluded.updated_at,
-			status     = 'active'`,
-		sessionID, username, nasIP,
+			updated_at         = excluded.updated_at,
+			calling_station_id = excluded.calling_station_id,
+			status             = 'active'`,
+		sessionID, username, nasIP, callingStationID,
 		startedAt.UTC().Format("2006-01-02 15:04:05"),
 		startedAt.UTC().Format("2006-01-02 15:04:05"),
 	)
 	return err
+}
+
+func (d *DB) OnlineUsernames() (map[string]bool, error) {
+	rows, err := d.sql.Query(`SELECT DISTINCT username FROM sessions WHERE status = 'active'`)
+	if err != nil {
+		return nil, fmt.Errorf("online usernames: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	online := make(map[string]bool)
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			return nil, err
+		}
+		online[u] = true
+	}
+	return online, rows.Err()
 }
 
 func (d *DB) UpdateSessionInterim(sessionID string, bytesIn, bytesOut, sessionTime int64) error {
@@ -65,7 +84,7 @@ func (d *DB) StopSession(sessionID string, bytesIn, bytesOut, sessionTime int64,
 
 func (d *DB) ListActiveSessions() ([]Session, error) {
 	rows, err := d.sql.Query(`
-		SELECT id, session_id, username, nas_ip, started_at, updated_at,
+		SELECT id, session_id, username, nas_ip, calling_station_id, started_at, updated_at,
 		       stopped_at, bytes_in, bytes_out, session_time, terminate_cause, status
 		FROM sessions WHERE status = 'active' ORDER BY started_at DESC`)
 	if err != nil {
@@ -77,7 +96,7 @@ func (d *DB) ListActiveSessions() ([]Session, error) {
 
 func (d *DB) ListSessionsByUser(username string) ([]Session, error) {
 	rows, err := d.sql.Query(`
-		SELECT id, session_id, username, nas_ip, started_at, updated_at,
+		SELECT id, session_id, username, nas_ip, calling_station_id, started_at, updated_at,
 		       stopped_at, bytes_in, bytes_out, session_time, terminate_cause, status
 		FROM sessions WHERE username = ? ORDER BY started_at DESC LIMIT 100`, username)
 	if err != nil {
@@ -89,7 +108,7 @@ func (d *DB) ListSessionsByUser(username string) ([]Session, error) {
 
 func (d *DB) ListRecentSessions(limit int) ([]Session, error) {
 	rows, err := d.sql.Query(`
-		SELECT id, session_id, username, nas_ip, started_at, updated_at,
+		SELECT id, session_id, username, nas_ip, calling_station_id, started_at, updated_at,
 		       stopped_at, bytes_in, bytes_out, session_time, terminate_cause, status
 		FROM sessions ORDER BY started_at DESC LIMIT ?`, limit)
 	if err != nil {
@@ -104,7 +123,7 @@ func scanSessions(rows *sql.Rows) ([]Session, error) {
 	for rows.Next() {
 		var s Session
 		var startedAt, updatedAt, stoppedAtRaw interface{}
-		err := rows.Scan(&s.ID, &s.SessionID, &s.Username, &s.NasIP,
+		err := rows.Scan(&s.ID, &s.SessionID, &s.Username, &s.NasIP, &s.CallingStationID,
 			&startedAt, &updatedAt, &stoppedAtRaw,
 			&s.BytesIn, &s.BytesOut, &s.SessionTime,
 			&s.TerminateCause, &s.Status)

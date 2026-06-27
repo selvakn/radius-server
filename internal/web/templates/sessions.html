@@ -5,13 +5,14 @@
 </div>
 <table>
 <thead>
-  <tr><th>User</th><th>Session ID</th><th>NAS</th><th>Started</th><th>Duration</th><th>Upload</th><th>Download</th><th>Status</th></tr>
+  <tr><th>User</th><th>Session ID</th><th>MAC</th><th>NAS</th><th>Started</th><th>Duration</th><th>Upload</th><th>Download</th><th>Status</th></tr>
 </thead>
 <tbody>
 {{range .Sessions}}
 <tr>
   <td><a href="/sessions?user={{.Username}}">{{.Username}}</a></td>
   <td style="font-size:11px;color:#888">{{slice .SessionID 0 (min 8 (len .SessionID))}}</td>
+  <td style="font-size:11px;color:#888">{{if .CallingStationID}}{{.CallingStationID}}{{else}}—{{end}}</td>
   <td style="font-size:11px;color:#888">{{.NasIP}}</td>
   <td style="font-size:12px">{{fmttime .StartedAt}}</td>
   <td>{{fmtduration .SessionTime}}</td>

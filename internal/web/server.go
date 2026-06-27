@@ -183,15 +183,16 @@ func sessionFromContext(ctx context.Context) *Session {
 }
 
 type pageData struct {
-	Users     []db.User
-	User      *db.User
-	Edit      bool
-	CSRFToken string
-	Flash     string
-	FlashType string
-	Sessions  []db.Session
-	Username  string
-	Attempts  []db.AttemptSummary
+	Users       []db.User
+	User        *db.User
+	Edit        bool
+	CSRFToken   string
+	Flash       string
+	FlashType   string
+	Sessions    []db.Session
+	Username    string
+	Attempts    []db.AttemptSummary
+	OnlineUsers map[string]bool
 }
 
 func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {
@@ -204,12 +205,12 @@ func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {
 	_ = t.ExecuteTemplate(w, "login.html", map[string]string{"Error": errMsg})
 }
 
-func (s *Server) renderUsers(w http.ResponseWriter, users []db.User, csrf, flash string) {
+func (s *Server) renderUsers(w http.ResponseWriter, users []db.User, online map[string]bool, csrf, flash string) {
 	flashType := "ok"
 	if flash == "" {
 		flashType = ""
 	}
-	data := pageData{Users: users, CSRFToken: csrf, Flash: flash, FlashType: flashType}
+	data := pageData{Users: users, OnlineUsers: online, CSRFToken: csrf, Flash: flash, FlashType: flashType}
 	s.renderLayout(w, "users.html", data)
 }
 

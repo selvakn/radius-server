@@ -81,8 +81,12 @@ func (s *Server) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
+	online, err := s.db.OnlineUsernames()
+	if err != nil {
+		online = map[string]bool{}
+	}
 	sess := sessionFromContext(r.Context())
-	s.renderUsers(w, users, sess.CSRFToken, flashFromCookie(r))
+	s.renderUsers(w, users, online, sess.CSRFToken, flashFromCookie(r))
 	clearFlash(w)
 }
 
