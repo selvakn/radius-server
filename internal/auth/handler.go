@@ -11,6 +11,7 @@ import (
 	"layeh.com/radius"
 	"layeh.com/radius/rfc2865"
 	"layeh.com/radius/rfc2869"
+	"layeh.com/radius/vendors/microsoft"
 	"layeh.com/radius/vendors/wispr"
 
 	"github.com/selvakn/radius-server/internal/db"
@@ -30,29 +31,35 @@ func New(database *db.DB, secret string) *Handler {
 
 func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	username := rfc2865.UserName_GetString(r.Packet)
-	attempted := GetPAPPassword(r)
-	slog.Debug("radius auth attempt", "username", username, "has_password", attempted != "")
+
 	user, err := h.db.GetUserByUsername(username)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			slog.Info("radius reject: user not found", "username", username)
-			h.record(username, "rejected", attempted)
+			h.record(username, "rejected", GetPAPPassword(r))
 			h.writeResponse(w, r.Response(radius.CodeAccessReject))
 			return
 		}
 		slog.Error("radius db error", "err", err)
-		h.record(username, "rejected", attempted)
 		h.writeResponse(w, r.Response(radius.CodeAccessReject))
 		return
 	}
 
 	if !user.Enabled {
 		slog.Info("radius reject: user disabled", "username", username)
-		h.record(username, "rejected", attempted)
+		h.record(username, "rejected", "")
 		h.writeResponse(w, r.Response(radius.CodeAccessReject))
 		return
 	}
 
+	if IsMSCHAP2Request(r.Packet) {
+		h.handleMSCHAP2(w, r, user)
+		return
+	}
+
+	// PAP fallback
+	attempted := GetPAPPassword(r)
+	slog.Debug("radius pap attempt", "username", username, "has_password", attempted != "")
 	if !VerifyPAP(r, h.secret, user.PasswordHash) {
 		slog.Info("radius reject: wrong password", "username", username)
 		h.record(username, "rejected", attempted)
@@ -60,14 +67,43 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 		return
 	}
 
-	slog.Info("radius accept", "username", username)
+	slog.Info("radius accept (pap)", "username", username)
 	h.record(username, "accepted", "")
 	resp := r.Response(radius.CodeAccessAccept)
-
 	if user.DownloadRate != nil && user.UploadRate != nil {
 		addBandwidthAttributes(resp, *user.DownloadRate, *user.UploadRate)
 	}
+	h.writeResponse(w, resp)
+}
 
+func (h *Handler) handleMSCHAP2(w radius.ResponseWriter, r *radius.Request, user *db.User) {
+	username := user.Username
+
+	if user.NTHash == "" {
+		slog.Info("radius reject: no nt_hash stored (re-save password in admin UI)", "username", username)
+		h.record(username, "rejected", "")
+		h.writeResponse(w, r.Response(radius.CodeAccessReject))
+		return
+	}
+
+	ntResponse, ok := VerifyMSCHAP2(r, username, user.NTHash)
+	if !ok {
+		slog.Info("radius reject: ms-chapv2 wrong password", "username", username)
+		h.record(username, "rejected", "")
+		h.writeResponse(w, r.Response(radius.CodeAccessReject))
+		return
+	}
+
+	slog.Info("radius accept (ms-chapv2)", "username", username)
+	h.record(username, "accepted", "")
+	resp := r.Response(radius.CodeAccessAccept)
+
+	if success := MSCHAPv2Success(r, username, user.NTHash, ntResponse); success != nil {
+		_ = microsoft.MSCHAP2Success_Add(resp, success)
+	}
+	if user.DownloadRate != nil && user.UploadRate != nil {
+		addBandwidthAttributes(resp, *user.DownloadRate, *user.UploadRate)
+	}
 	h.writeResponse(w, resp)
 }
 

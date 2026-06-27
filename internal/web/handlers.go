@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/selvakn/radius-server/internal/auth"
 	"github.com/selvakn/radius-server/internal/db"
 )
 
@@ -110,7 +111,7 @@ func (s *Server) handlePostCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	bcryptHash, ntHash, err := hashPassword(password)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
@@ -119,7 +120,8 @@ func (s *Server) handlePostCreateUser(w http.ResponseWriter, r *http.Request) {
 	down, up := parseRates(r)
 	if err := s.db.CreateUser(db.User{
 		Username:     username,
-		PasswordHash: string(hash),
+		PasswordHash: bcryptHash,
+		NTHash:       ntHash,
 		Enabled:      true,
 		DownloadRate: down,
 		UploadRate:   up,
@@ -170,18 +172,19 @@ func (s *Server) handlePostUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hash := user.PasswordHash
+	bcryptHash := user.PasswordHash
+	ntHash := user.NTHash
 	if p := r.FormValue("password"); p != "" {
-		h, err := bcrypt.GenerateFromPassword([]byte(p), 12)
+		var err error
+		bcryptHash, ntHash, err = hashPassword(p)
 		if err != nil {
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
-		hash = string(h)
 	}
 
 	down, up := parseRates(r)
-	if err := s.db.UpdateUser(id, db.UserUpdate{PasswordHash: hash, DownloadRate: down, UploadRate: up}); err != nil {
+	if err := s.db.UpdateUser(id, db.UserUpdate{PasswordHash: bcryptHash, NTHash: ntHash, DownloadRate: down, UploadRate: up}); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -229,6 +232,18 @@ func (s *Server) handlePostDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	setFlash(w, "User deleted", "ok")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func hashPassword(plain string) (bcryptHash, ntHash string, err error) {
+	h, err := bcrypt.GenerateFromPassword([]byte(plain), 12)
+	if err != nil {
+		return "", "", err
+	}
+	nt, err := auth.NTHash(plain)
+	if err != nil {
+		return "", "", err
+	}
+	return string(h), nt, nil
 }
 
 func parseID(r *http.Request) (int64, error) {

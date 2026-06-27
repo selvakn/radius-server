@@ -13,6 +13,7 @@ type User struct {
 	ID           int64
 	Username     string
 	PasswordHash string
+	NTHash       string
 	Enabled      bool
 	DownloadRate *int
 	UploadRate   *int
@@ -22,14 +23,15 @@ type User struct {
 
 type UserUpdate struct {
 	PasswordHash string
+	NTHash       string
 	DownloadRate *int
 	UploadRate   *int
 }
 
 func (d *DB) CreateUser(u User) error {
 	_, err := d.sql.Exec(
-		`INSERT INTO users (username, password_hash, enabled, download_rate, upload_rate) VALUES (?, ?, ?, ?, ?)`,
-		u.Username, u.PasswordHash, boolToInt(u.Enabled), u.DownloadRate, u.UploadRate,
+		`INSERT INTO users (username, password_hash, nt_hash, enabled, download_rate, upload_rate) VALUES (?, ?, ?, ?, ?, ?)`,
+		u.Username, u.PasswordHash, u.NTHash, boolToInt(u.Enabled), u.DownloadRate, u.UploadRate,
 	)
 	if err != nil {
 		return fmt.Errorf("create user: %w", err)
@@ -39,7 +41,7 @@ func (d *DB) CreateUser(u User) error {
 
 func (d *DB) GetUserByUsername(username string) (*User, error) {
 	row := d.sql.QueryRow(
-		`SELECT id, username, password_hash, enabled, download_rate, upload_rate, created_at, updated_at FROM users WHERE username = ?`,
+		`SELECT id, username, password_hash, nt_hash, enabled, download_rate, upload_rate, created_at, updated_at FROM users WHERE username = ?`,
 		username,
 	)
 	return scanUser(row)
@@ -47,7 +49,7 @@ func (d *DB) GetUserByUsername(username string) (*User, error) {
 
 func (d *DB) GetUserByID(id int64) (*User, error) {
 	row := d.sql.QueryRow(
-		`SELECT id, username, password_hash, enabled, download_rate, upload_rate, created_at, updated_at FROM users WHERE id = ?`,
+		`SELECT id, username, password_hash, nt_hash, enabled, download_rate, upload_rate, created_at, updated_at FROM users WHERE id = ?`,
 		id,
 	)
 	return scanUser(row)
@@ -55,7 +57,7 @@ func (d *DB) GetUserByID(id int64) (*User, error) {
 
 func (d *DB) ListUsers() ([]User, error) {
 	rows, err := d.sql.Query(
-		`SELECT id, username, password_hash, enabled, download_rate, upload_rate, created_at, updated_at FROM users ORDER BY username`,
+		`SELECT id, username, password_hash, nt_hash, enabled, download_rate, upload_rate, created_at, updated_at FROM users ORDER BY username`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
@@ -75,8 +77,8 @@ func (d *DB) ListUsers() ([]User, error) {
 
 func (d *DB) UpdateUser(id int64, upd UserUpdate) error {
 	_, err := d.sql.Exec(
-		`UPDATE users SET password_hash = ?, download_rate = ?, upload_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		upd.PasswordHash, upd.DownloadRate, upd.UploadRate, id,
+		`UPDATE users SET password_hash = ?, nt_hash = ?, download_rate = ?, upload_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		upd.PasswordHash, upd.NTHash, upd.DownloadRate, upd.UploadRate, id,
 	)
 	return err
 }
@@ -102,7 +104,7 @@ func scanUser(s scanner) (*User, error) {
 	var u User
 	var enabled int
 	var createdAt, updatedAt interface{}
-	err := s.Scan(&u.ID, &u.Username, &u.PasswordHash, &enabled, &u.DownloadRate, &u.UploadRate, &createdAt, &updatedAt)
+	err := s.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.NTHash, &enabled, &u.DownloadRate, &u.UploadRate, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
