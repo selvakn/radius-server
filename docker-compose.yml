@@ -10,7 +10,7 @@ services:
       - ./config.yaml:/etc/radius-server/config.yaml:ro
       - radius-data:/data
     environment:
-      - TZ=UTC
+      - TZ=Asia/Kolkata   # set to your local timezone
 
 volumes:
   radius-data:

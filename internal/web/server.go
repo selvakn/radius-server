@@ -81,7 +81,7 @@ var tmplFuncs = template.FuncMap{
 		if t.IsZero() {
 			return "—"
 		}
-		return t.Format("01-02 15:04")
+		return t.Local().Format("01-02 15:04")
 	},
 }
 
