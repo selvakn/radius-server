@@ -15,4 +15,10 @@
   <input type="submit" value="{{if .Edit}}Update{{else}}Create{{end}}">
   <a href="/" style="margin-left:8px">cancel</a>
 </form>
+{{if .Edit}}
+<form method="POST" action="/users/{{.User.ID}}/disconnect-all" style="margin-top:16px">
+  <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+  <button type="submit" class="btn-danger">disconnect all sessions</button>
+</form>
+{{end}}
 {{end}}

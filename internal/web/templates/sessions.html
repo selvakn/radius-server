@@ -5,7 +5,7 @@
 </div>
 <table>
 <thead>
-  <tr><th>User</th><th>Session ID</th><th>MAC</th><th>NAS</th><th>Started</th><th>Duration</th><th>Upload</th><th>Download</th><th>Status</th></tr>
+  <tr><th>User</th><th>Session ID</th><th>MAC</th><th>NAS</th><th>Started</th><th>Duration</th><th>Upload</th><th>Download</th><th>Status</th><th>Action</th></tr>
 </thead>
 <tbody>
 {{range .Sessions}}
@@ -19,9 +19,10 @@
   <td>{{fmtbytes .BytesIn}}</td>
   <td>{{fmtbytes .BytesOut}}</td>
   <td>{{if eq .Status "active"}}<span class="badge badge-on">active</span>{{else}}<span class="badge badge-off">stopped</span>{{end}}</td>
+  <td>{{if and (eq .Status "active") .NasIP}}<form method="POST" action="/sessions/{{.ID}}/disconnect"><input type="hidden" name="_csrf" value="{{$.CSRFToken}}"><button type="submit" class="btn-danger">disconnect</button></form>{{end}}</td>
 </tr>
 {{else}}
-<tr><td colspan="8" style="color:#666;padding:16px 8px">no sessions</td></tr>
+<tr><td colspan="10" style="color:#666;padding:16px 8px">no sessions</td></tr>
 {{end}}
 </tbody>
 </table>

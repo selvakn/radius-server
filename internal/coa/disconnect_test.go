@@ -22,7 +22,7 @@ func startMockNAS(t *testing.T, responseCode radius.Code) string {
 	}
 	addr := pc.LocalAddr().String()
 	go func() {
-		defer pc.Close()
+		defer func() { _ = pc.Close() }()
 		buf := make([]byte, 4096)
 		for {
 			n, remoteAddr, err := pc.ReadFrom(buf)
@@ -38,7 +38,7 @@ func startMockNAS(t *testing.T, responseCode radius.Code) string {
 			_, _ = pc.WriteTo(encoded, remoteAddr)
 		}
 	}()
-	t.Cleanup(func() { pc.Close() })
+	t.Cleanup(func() { _ = pc.Close() })
 	time.Sleep(10 * time.Millisecond)
 	return addr
 }
@@ -76,7 +76,7 @@ func TestSendDisconnect_IncludesSessionAttributes(t *testing.T) {
 	pc, _ := net.ListenPacket("udp", "127.0.0.1:0")
 	addr := pc.LocalAddr().String()
 	go func() {
-		defer pc.Close()
+		defer func() { _ = pc.Close() }()
 		buf := make([]byte, 4096)
 		n, remoteAddr, _ := pc.ReadFrom(buf)
 		pkt, _ := radius.Parse(buf[:n], []byte(testSecret))

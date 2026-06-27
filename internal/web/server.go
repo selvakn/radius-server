@@ -19,10 +19,16 @@ import (
 //go:embed templates/*.html
 var templateFS embed.FS
 
+// CoAClient sends RFC 5176 Disconnect-Requests to a NAS.
+type CoAClient interface {
+	SendDisconnect(ctx context.Context, nasAddr, secret, sessionID, username string) error
+}
+
 type Server struct {
 	db       *db.DB
 	cfg      *config.Config
 	sessions *SessionStore
+	coa      CoAClient
 	router   *chi.Mux
 }
 
@@ -85,11 +91,12 @@ var tmplFuncs = template.FuncMap{
 	},
 }
 
-func New(database *db.DB, cfg *config.Config, sessions *SessionStore) *Server {
+func New(database *db.DB, cfg *config.Config, sessions *SessionStore, coaClient CoAClient) *Server {
 	s := &Server{
 		db:       database,
 		cfg:      cfg,
 		sessions: sessions,
+		coa:      coaClient,
 	}
 	s.router = s.buildRouter()
 	return s
@@ -133,6 +140,8 @@ func (s *Server) buildRouter() *chi.Mux {
 		r.With(s.csrfMiddleware).Post("/users/{id}/disable", s.handlePostDisable)
 		r.With(s.csrfMiddleware).Post("/users/{id}/enable", s.handlePostEnable)
 		r.With(s.csrfMiddleware).Post("/users/{id}/delete", s.handlePostDelete)
+		r.With(s.csrfMiddleware).Post("/sessions/{id}/disconnect", s.handlePostDisconnectSession)
+		r.With(s.csrfMiddleware).Post("/users/{id}/disconnect-all", s.handlePostDisconnectAllSessions)
 	})
 
 	return r

@@ -1,9 +1,11 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -244,6 +246,73 @@ func hashPassword(plain string) (bcryptHash, ntHash string, err error) {
 		return "", "", err
 	}
 	return string(h), nt, nil
+}
+
+func (s *Server) handlePostDisconnectSession(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	session, err := s.db.GetActiveSessionByID(id)
+	if err != nil {
+		setFlash(w, "Session not found or already stopped", "err")
+		http.Redirect(w, r, "/sessions", http.StatusSeeOther)
+		return
+	}
+	if session.NasIP == "" {
+		setFlash(w, "Cannot disconnect: no NAS IP for this session", "err")
+		http.Redirect(w, r, "/sessions", http.StatusSeeOther)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	if err := s.coa.SendDisconnect(ctx, session.NasIP, s.cfg.Radius.SharedSecret, session.SessionID, session.Username); err != nil {
+		setFlash(w, fmt.Sprintf("Disconnect failed: %v", err), "err")
+		http.Redirect(w, r, "/sessions", http.StatusSeeOther)
+		return
+	}
+
+	_ = s.db.StopSession(session.SessionID, session.BytesIn, session.BytesOut, session.SessionTime, "Admin-Request", time.Now())
+	setFlash(w, fmt.Sprintf("Session for %s disconnected", session.Username), "ok")
+	http.Redirect(w, r, "/sessions", http.StatusSeeOther)
+}
+
+func (s *Server) handlePostDisconnectAllSessions(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	user, err := s.db.GetUserByID(id)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	activeSessions, err := s.db.GetActiveSessionsByUser(user.Username)
+	if err != nil || len(activeSessions) == 0 {
+		setFlash(w, "No active sessions to disconnect", "ok")
+		http.Redirect(w, r, fmt.Sprintf("/users/%d/edit", id), http.StatusSeeOther) //nolint:gosec
+		return
+	}
+
+	ok, failed := 0, 0
+	for _, sess := range activeSessions {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		disconnectErr := s.coa.SendDisconnect(ctx, sess.NasIP, s.cfg.Radius.SharedSecret, sess.SessionID, sess.Username)
+		cancel()
+		if disconnectErr == nil {
+			_ = s.db.StopSession(sess.SessionID, sess.BytesIn, sess.BytesOut, sess.SessionTime, "Admin-Request", time.Now())
+			ok++
+		} else {
+			failed++
+		}
+	}
+
+	msg := fmt.Sprintf("Disconnected %d of %d sessions", ok, ok+failed)
+	setFlash(w, msg, "ok")
+	http.Redirect(w, r, fmt.Sprintf("/users/%d/edit", id), http.StatusSeeOther) //nolint:gosec
 }
 
 func parseID(r *http.Request) (int64, error) {

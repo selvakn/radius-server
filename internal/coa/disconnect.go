@@ -10,6 +10,15 @@ import (
 	"layeh.com/radius/rfc2866"
 )
 
+// Client implements the CoAClient interface using the configured shared secret.
+type Client struct {
+	Secret string
+}
+
+func (c *Client) SendDisconnect(ctx context.Context, nasAddr, secret, sessionID, username string) error {
+	return SendDisconnect(ctx, nasAddr, c.Secret, sessionID, username)
+}
+
 // SendDisconnect sends an RFC 5176 Disconnect-Request to the NAS and returns
 // nil on Disconnect-ACK, or an error on Disconnect-NAK or exchange failure.
 // nasAddr may be a bare IP ("192.168.1.1") or IP:port; bare IPs get port 3799 appended.
