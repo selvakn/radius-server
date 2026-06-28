@@ -8,7 +8,7 @@ export GOCACHE    ?= /tmp/gocache
 export GOPATH     ?= /tmp/gopath
 export GOMODCACHE ?= /tmp/gomodcache
 
-.PHONY: build build-linux test lint run clean check docker-build docker-push
+.PHONY: build build-linux test lint gosec run clean check docker-build docker-push
 
 build:
 	mkdir -p $(BIN_DIR)
@@ -23,6 +23,9 @@ test:
 
 lint:
 	golangci-lint run ./...
+
+gosec:
+	golangci-lint run --enable-only gosec ./...
 
 run:
 	go run $(CMD) --config config.yaml
