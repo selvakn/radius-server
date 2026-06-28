@@ -17,6 +17,7 @@ import (
 
 	"github.com/selvakn/radius-server/internal/accounting"
 	"github.com/selvakn/radius-server/internal/auth"
+	"github.com/selvakn/radius-server/internal/coa"
 	"github.com/selvakn/radius-server/internal/config"
 	"github.com/selvakn/radius-server/internal/db"
 	"github.com/selvakn/radius-server/internal/web"
@@ -66,7 +67,8 @@ func main() {
 	go startPurgeLoop(ctx, database)
 
 	sessions := web.NewSessionStore()
-	webSrv := web.New(database, cfg, sessions)
+	coaClient := &coa.Client{Secret: cfg.Radius.SharedSecret}
+	webSrv := web.New(database, cfg, sessions, coaClient)
 	webAddr := fmt.Sprintf(":%d", cfg.Web.Port)
 
 	slog.Info("starting RADIUS server", "addr", radiusAddr)

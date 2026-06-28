@@ -60,6 +60,57 @@ func TestSessionUpsertIdempotent(t *testing.T) {
 	}
 }
 
+func TestGetActiveSessionByID_Found(t *testing.T) {
+	d := openTestDB(t)
+	_ = d.UpsertSessionStart("s-active", "frank", "10.0.0.1", "", time.Now())
+	sessions, _ := d.ListActiveSessions()
+	if len(sessions) == 0 {
+		t.Fatal("no active sessions")
+	}
+	got, err := d.GetActiveSessionByID(sessions[0].ID)
+	if err != nil {
+		t.Fatalf("expected session, got error: %v", err)
+	}
+	if got.Username != "frank" {
+		t.Errorf("expected frank, got %q", got.Username)
+	}
+}
+
+func TestGetActiveSessionByID_NotFound(t *testing.T) {
+	d := openTestDB(t)
+	_, err := d.GetActiveSessionByID(9999)
+	if err == nil {
+		t.Fatal("expected error for unknown id")
+	}
+}
+
+func TestGetActiveSessionByID_InactiveReturnsNotFound(t *testing.T) {
+	d := openTestDB(t)
+	_ = d.UpsertSessionStart("s-stop", "grace", "10.0.0.1", "", time.Now())
+	sessions, _ := d.ListActiveSessions()
+	_ = d.StopSession("s-stop", 0, 0, 0, "User-Request", time.Now())
+	_, err := d.GetActiveSessionByID(sessions[0].ID)
+	if err == nil {
+		t.Fatal("expected not found for stopped session")
+	}
+}
+
+func TestGetActiveSessionsByUser_ReturnsOnlyActive(t *testing.T) {
+	d := openTestDB(t)
+	_ = d.UpsertSessionStart("sa1", "henry", "10.0.0.1", "", time.Now())
+	_ = d.UpsertSessionStart("sa2", "henry", "10.0.0.1", "", time.Now())
+	_ = d.UpsertSessionStart("sa3", "henry", "10.0.0.1", "", time.Now())
+	_ = d.StopSession("sa3", 0, 0, 0, "User-Request", time.Now())
+
+	active, err := d.GetActiveSessionsByUser("henry")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(active) != 2 {
+		t.Errorf("expected 2 active sessions for henry, got %d", len(active))
+	}
+}
+
 func TestListRecentSessions(t *testing.T) {
 	d := openTestDB(t)
 	for _, id := range []string{"r1", "r2", "r3"} {

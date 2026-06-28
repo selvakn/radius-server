@@ -1,6 +1,7 @@
 package web_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -15,6 +17,10 @@ import (
 	"github.com/selvakn/radius-server/internal/db"
 	"github.com/selvakn/radius-server/internal/web"
 )
+
+type mockCoA struct{ err error }
+
+func (m *mockCoA) SendDisconnect(_ context.Context, _, _, _, _ string) error { return m.err }
 
 // sessionCookie builds a bare session cookie for test requests.
 // Real browsers receive this via Set-Cookie; Secure is irrelevant in unit tests.
@@ -43,7 +49,7 @@ func setupServer(t *testing.T) (*web.Server, *db.DB, *web.SessionStore) {
 		},
 	}
 	sessions := web.NewSessionStore()
-	srv := web.New(d, cfg, sessions)
+	srv := web.New(d, cfg, sessions, &mockCoA{})
 	return srv, d, sessions
 }
 
@@ -387,5 +393,116 @@ func TestCreateUser_DuplicateRedirectsToEdit(t *testing.T) {
 	location := rec.Header().Get("Location")
 	if !strings.Contains(location, fmt.Sprintf("/users/%d/edit", existing.ID)) {
 		t.Errorf("expected redirect to edit page, got location: %q", location)
+	}
+}
+
+func setupServerWithCoA(t *testing.T, coaErr error) (*web.Server, *db.DB, *web.SessionStore) {
+	t.Helper()
+	d, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	cfg := &config.Config{
+		Radius: config.RadiusConfig{SharedSecret: "secret"},
+		Web:    config.WebConfig{SessionSecret: "testsecret12345678901234567890"},
+		Admins: []config.AdminUser{{Username: "admin", PasswordHash: makeHash(t, "adminpass")}},
+	}
+	sessions := web.NewSessionStore()
+	srv := web.New(d, cfg, sessions, &mockCoA{err: coaErr})
+	return srv, d, sessions
+}
+
+func TestDisconnectSession_NotFound(t *testing.T) {
+	srv, _, sessions := setupServerWithCoA(t, nil)
+	token := sessions.Create("admin")
+	sess, _ := sessions.Get(token)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/sessions/9999/disconnect", strings.NewReader(url.Values{
+		"_csrf": {sess.CSRFToken},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
+		t.Errorf("expected redirect, got %d", rec.Code)
+	}
+}
+
+func TestDisconnectSession_NoNasIP(t *testing.T) {
+	srv, d, sessions := setupServerWithCoA(t, nil)
+	_ = d.UpsertSessionStart("sess-nonas", "alice", "", "", time.Now())
+	active, _ := d.ListActiveSessions()
+	token := sessions.Create("admin")
+	sess, _ := sessions.Get(token)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", fmt.Sprintf("/sessions/%d/disconnect", active[0].ID),
+		strings.NewReader(url.Values{"_csrf": {sess.CSRFToken}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
+		t.Errorf("expected redirect, got %d", rec.Code)
+	}
+}
+
+func TestDisconnectSession_Success(t *testing.T) {
+	srv, d, sessions := setupServerWithCoA(t, nil)
+	_ = d.UpsertSessionStart("sess-ok", "bob", "10.0.0.1", "", time.Now())
+	active, _ := d.ListActiveSessions()
+	token := sessions.Create("admin")
+	sess, _ := sessions.Get(token)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", fmt.Sprintf("/sessions/%d/disconnect", active[0].ID),
+		strings.NewReader(url.Values{"_csrf": {sess.CSRFToken}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
+		t.Errorf("expected redirect after success, got %d", rec.Code)
+	}
+	remaining, _ := d.ListActiveSessions()
+	if len(remaining) != 0 {
+		t.Error("expected session to be marked stopped after successful disconnect")
+	}
+}
+
+func TestDisconnectAll_NoActiveSessions(t *testing.T) {
+	srv, d, sessions := setupServerWithCoA(t, nil)
+	_ = d.CreateUser(db.User{Username: "carol", PasswordHash: "h", Enabled: true})
+	u, _ := d.GetUserByUsername("carol")
+	token := sessions.Create("admin")
+	sess, _ := sessions.Get(token)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", fmt.Sprintf("/users/%d/disconnect-all", u.ID),
+		strings.NewReader(url.Values{"_csrf": {sess.CSRFToken}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
+		t.Errorf("expected redirect, got %d", rec.Code)
+	}
+}
+
+func TestDisconnectAll_Success(t *testing.T) {
+	srv, d, sessions := setupServerWithCoA(t, nil)
+	_ = d.CreateUser(db.User{Username: "dave", PasswordHash: "h", Enabled: true})
+	u, _ := d.GetUserByUsername("dave")
+	_ = d.UpsertSessionStart("da1", "dave", "10.0.0.1", "", time.Now())
+	_ = d.UpsertSessionStart("da2", "dave", "10.0.0.1", "", time.Now())
+	token := sessions.Create("admin")
+	sess, _ := sessions.Get(token)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", fmt.Sprintf("/users/%d/disconnect-all", u.ID),
+		strings.NewReader(url.Values{"_csrf": {sess.CSRFToken}}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther && rec.Code != http.StatusFound {
+		t.Errorf("expected redirect, got %d", rec.Code)
+	}
+	remaining, _ := d.GetActiveSessionsByUser("dave")
+	if len(remaining) != 0 {
+		t.Errorf("expected all sessions stopped, got %d active", len(remaining))
 	}
 }
