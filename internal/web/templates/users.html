@@ -5,7 +5,7 @@
 </div>
 <table>
 <thead>
-  <tr><th>Username</th><th>Status</th><th>Online</th><th>Down (Mbps)</th><th>Up (Mbps)</th><th>Actions</th></tr>
+  <tr><th>Username</th><th>Status</th><th>Online</th><th>Down (Mbps)</th><th>Up (Mbps)</th><th>Upload (mo)</th><th>Download (mo)</th><th>Actions</th></tr>
 </thead>
 <tbody>
 {{range .Users}}
@@ -15,6 +15,8 @@
   <td>{{if index $.OnlineUsers .Username}}<span class="badge badge-on">online</span>{{else}}<span class="badge" style="background:#222;color:#666">offline</span>{{end}}</td>
   <td>{{if .DownloadRate}}{{mbps .DownloadRate}}{{else}}—{{end}}</td>
   <td>{{if .UploadRate}}{{mbps .UploadRate}}{{else}}—{{end}}</td>
+  <td>{{with index $.CurrentMonthUsage .Username}}{{fmtbytes .BytesIn}}{{else}}—{{end}}</td>
+  <td>{{with index $.CurrentMonthUsage .Username}}{{fmtbytes .BytesOut}}{{else}}—{{end}}</td>
   <td>
     <a href="/users/{{.ID}}/edit">edit</a>
     {{if .Enabled}}

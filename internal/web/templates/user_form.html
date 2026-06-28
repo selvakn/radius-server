@@ -20,5 +20,22 @@
   <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
   <button type="submit" class="btn-danger">disconnect all sessions</button>
 </form>
+<h4 style="margin-top:24px;margin-bottom:8px;color:#aaa;font-size:12px;text-transform:uppercase">Monthly Usage</h4>
+<table>
+<thead><tr><th>Month</th><th>Upload</th><th>Download</th></tr></thead>
+<tbody>
+{{if .MonthlyHistory}}
+{{range .MonthlyHistory}}
+<tr>
+  <td>{{fmtmonth .Month}}</td>
+  <td>{{fmtbytes .BytesIn}}</td>
+  <td>{{fmtbytes .BytesOut}}</td>
+</tr>
+{{end}}
+{{else}}
+<tr><td colspan="3" style="color:#666;padding:8px">no usage history</td></tr>
+{{end}}
+</tbody>
+</table>
 {{end}}
 {{end}}
