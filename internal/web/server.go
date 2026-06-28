@@ -89,6 +89,16 @@ var tmplFuncs = template.FuncMap{
 		}
 		return t.Local().Format("01-02 15:04")
 	},
+	"fmtmonth": func(s string) string {
+		if len(s) != 7 {
+			return s
+		}
+		t, err := time.Parse("2006-01", s)
+		if err != nil {
+			return s
+		}
+		return t.Format("Jan 2006")
+	},
 }
 
 func New(database *db.DB, cfg *config.Config, sessions *SessionStore, coaClient CoAClient) *Server {
@@ -192,16 +202,18 @@ func sessionFromContext(ctx context.Context) *Session {
 }
 
 type pageData struct {
-	Users       []db.User
-	User        *db.User
-	Edit        bool
-	CSRFToken   string
-	Flash       string
-	FlashType   string
-	Sessions    []db.Session
-	Username    string
-	Attempts    []db.AttemptSummary
-	OnlineUsers map[string]bool
+	Users             []db.User
+	User              *db.User
+	Edit              bool
+	CSRFToken         string
+	Flash             string
+	FlashType         string
+	Sessions          []db.Session
+	Username          string
+	Attempts          []db.AttemptSummary
+	OnlineUsers       map[string]bool
+	CurrentMonthUsage map[string]db.MonthlyUsage
+	MonthlyHistory    []db.MonthlyUsage
 }
 
 func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {
@@ -214,17 +226,22 @@ func (s *Server) renderLogin(w http.ResponseWriter, errMsg string) {
 	_ = t.ExecuteTemplate(w, "login.html", map[string]string{"Error": errMsg})
 }
 
-func (s *Server) renderUsers(w http.ResponseWriter, users []db.User, online map[string]bool, csrf, flash string) {
+func (s *Server) renderUsers(w http.ResponseWriter, users []db.User, online map[string]bool, usage map[string]db.MonthlyUsage, csrf, flash string) {
 	flashType := "ok"
 	if flash == "" {
 		flashType = ""
 	}
-	data := pageData{Users: users, OnlineUsers: online, CSRFToken: csrf, Flash: flash, FlashType: flashType}
+	data := pageData{Users: users, OnlineUsers: online, CurrentMonthUsage: usage, CSRFToken: csrf, Flash: flash, FlashType: flashType}
 	s.renderLayout(w, "users.html", data)
 }
 
 func (s *Server) renderForm(w http.ResponseWriter, user *db.User, edit bool, csrf, errMsg string) {
-	data := pageData{User: user, Edit: edit, CSRFToken: csrf, Flash: errMsg, FlashType: "err"}
+	s.renderFormWithHistory(w, user, nil, csrf, errMsg)
+}
+
+func (s *Server) renderFormWithHistory(w http.ResponseWriter, user *db.User, history []db.MonthlyUsage, csrf, errMsg string) {
+	edit := user != nil && user.ID != 0
+	data := pageData{User: user, Edit: edit, CSRFToken: csrf, MonthlyHistory: history, Flash: errMsg, FlashType: "err"}
 	if errMsg == "" {
 		data.FlashType = ""
 	}

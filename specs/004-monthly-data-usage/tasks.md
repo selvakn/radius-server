@@ -1,0 +1,37 @@
+# Tasks: Monthly Data Usage
+
+**Input**: Design documents from `specs/004-monthly-data-usage/`
+**Prerequisites**: plan.md ✅ spec.md ✅ data-model.md ✅ contracts/ ✅
+
+**Tests**: TDD — write tests first, ≥70% coverage.
+
+---
+
+## Phase 1: DB Layer
+
+- [x] T001 [P] Write failing tests in `internal/db/usage_test.go`: `TestGetCurrentMonthUsage_WithData`, `TestGetCurrentMonthUsage_NoData`, `TestGetMonthlyUsageHistory_MultipleMonths`, `TestGetMonthlyUsageHistory_Cap24`
+- [x] T002 Implement `internal/db/usage.go`: `MonthlyUsage` struct; `GetCurrentMonthUsage() (map[string]MonthlyUsage, error)`; `GetMonthlyUsageHistory(username string) ([]MonthlyUsage, error)`
+
+**Commit**: `Add monthly usage DB queries`
+
+---
+
+## Phase 2: Web Layer
+
+- [x] T003 [P] Write failing tests: `TestUsersPage_ShowsCurrentMonthUsage`, `TestEditUser_ShowsMonthlyHistory`
+- [x] T004 Add `CurrentMonthUsage map[string]db.MonthlyUsage` and `MonthlyHistory []db.MonthlyUsage` to `pageData` in `server.go`; add `fmtmonth` template func
+- [x] T005 Update `handleGetUsers` in `handlers.go` to query `GetCurrentMonthUsage` and pass to template
+- [x] T006 Update `handleGetEditUser` in `handlers.go` to query `GetMonthlyUsageHistory` and pass to template
+- [x] T007 Update `users.html`: add Upload and Download columns showing current month usage
+- [x] T008 Update `user_form.html`: add monthly history table below form
+
+**Commit**: `Show monthly data usage in admin UI`
+
+---
+
+## Phase 3: Polish
+
+- [x] T009 `make check` (lint + tests ≥70%)
+- [x] T010 `make build-linux` (static binary)
+
+**Commit**: `Lint clean for monthly usage`

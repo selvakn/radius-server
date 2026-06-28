@@ -506,3 +506,38 @@ func TestDisconnectAll_Success(t *testing.T) {
 		t.Errorf("expected all sessions stopped, got %d active", len(remaining))
 	}
 }
+
+func TestUsersPage_ShowsCurrentMonthUsage(t *testing.T) {
+	srv, d, sessions := setupServer(t)
+	_ = d.CreateUser(db.User{Username: "usageuser", PasswordHash: "h", Enabled: true})
+	_ = d.UpsertSessionStart("usg1", "usageuser", "10.0.0.1", "", time.Now())
+	_ = d.UpdateSessionInterim("usg1", 1024000, 2048000, 60)
+	token := sessions.Create("admin")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "usageuser") {
+		t.Error("expected usageuser in users page")
+	}
+}
+
+func TestEditUser_ShowsMonthlyHistory(t *testing.T) {
+	srv, d, sessions := setupServer(t)
+	_ = d.CreateUser(db.User{Username: "histuser", PasswordHash: "h", Enabled: true})
+	u, _ := d.GetUserByUsername("histuser")
+	_ = d.UpsertSessionStart("hst1", "histuser", "10.0.0.1", "", time.Now())
+	_ = d.StopSession("hst1", 500, 1000, 30, "User-Request", time.Now())
+	token := sessions.Create("admin")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", fmt.Sprintf("/users/%d/edit", u.ID), nil)
+	req.AddCookie(sessionCookie(token))
+	srv.Router().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+}

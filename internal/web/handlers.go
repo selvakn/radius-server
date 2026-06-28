@@ -88,8 +88,12 @@ func (s *Server) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		online = map[string]bool{}
 	}
+	usage, err := s.db.GetCurrentMonthUsage()
+	if err != nil {
+		usage = map[string]db.MonthlyUsage{}
+	}
 	sess := sessionFromContext(r.Context())
-	s.renderUsers(w, users, online, sess.CSRFToken, flashFromCookie(r))
+	s.renderUsers(w, users, online, usage, sess.CSRFToken, flashFromCookie(r))
 	clearFlash(w)
 }
 
@@ -153,8 +157,12 @@ func (s *Server) handleGetEditUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	history, err := s.db.GetMonthlyUsageHistory(user.Username)
+	if err != nil {
+		history = []db.MonthlyUsage{}
+	}
 	sess := sessionFromContext(r.Context())
-	s.renderForm(w, user, true, sess.CSRFToken, "")
+	s.renderFormWithHistory(w, user, history, sess.CSRFToken, "")
 }
 
 func (s *Server) handlePostUpdateUser(w http.ResponseWriter, r *http.Request) {
