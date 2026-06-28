@@ -71,6 +71,7 @@ func (h *Handler) ServeRADIUS(w radius.ResponseWriter, r *radius.Request) {
 	h.record(username, "accepted", "")
 	resp := r.Response(radius.CodeAccessAccept)
 	_ = rfc2869.AcctInterimInterval_Set(resp, 300)
+	_ = rfc2865.IdleTimeout_Set(resp, 1800)
 	if user.DownloadRate != nil && user.UploadRate != nil {
 		addBandwidthAttributes(resp, *user.DownloadRate, *user.UploadRate)
 	}
@@ -99,6 +100,7 @@ func (h *Handler) handleMSCHAP2(w radius.ResponseWriter, r *radius.Request, user
 	h.record(username, "accepted", "")
 	resp := r.Response(radius.CodeAccessAccept)
 	_ = rfc2869.AcctInterimInterval_Set(resp, 300)
+	_ = rfc2865.IdleTimeout_Set(resp, 1800)
 	if success := MSCHAPv2Success(r, username, user.NTHash, ntResponse); success != nil {
 		_ = microsoft.MSCHAP2Success_Add(resp, success)
 	}
